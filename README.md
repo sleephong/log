@@ -10,7 +10,7 @@
 |---|---|
 | **`logs/`** | **每日日志** —— 从 2026-09-28 开始，一天一篇，记录每天学的东西 |
 | **`notes/`** | **日志之前的一次总笔记** —— 把此前学过的 task1~7 和实战题，一次性汇总整理的知识点 |
-| **`writeups/`** | 靶场 WP（待填充） |
+| **`writeups/`** | 靶场 WP（已开始填充） |
 
 **⭐ 区分**：
 - `notes/` = **旧知识的"存量总结"**（一次性的、系统的）
@@ -23,6 +23,7 @@
 | 日期 | 主题 | 标签 |
 |---|---|---|
 | [2026-09-28](./logs/2026-09-28.md) | un8 POP链 + SoapClient SSRF | `反序列化` `SSRF` |
+| [2026-09-30](./logs/2026-09-30.md) | un9 通关：内置类 SSRF + CRLF 抢 Content-Type | `反序列化` `SoapClient` `CRLF注入` |
 
 ---
 
@@ -50,10 +51,16 @@
 
 | 靶场 | 进度 |
 |---|---|
-| unserialize-lab | un1~un8 ✅ / un9 🔄 |
+| unserialize-lab | un1~un9 ✅ |
 | upload-labs | Pass-01~21 ✅ |
 | lfi-labs | LFI-1~14 + CMD-1~6 ✅ |
 | sqli-labs | Less-1~21 ✅ |
+
+### WP 文档
+
+| 题目 | 考点 | 文件 |
+|---|---|---|
+| unserialize-lab · un9 | **SoapClient SSRF + CRLF 注入** | [unserialize-lab-un9.md](./writeups/unserialize-lab-un9.md) |
 
 ---
 
@@ -70,7 +77,7 @@
 | 命令注入 | ✅ |
 | PHP 反序列化 | ✅ |
 | 信息收集 / 代码审计 | ✅ |
-| SSRF | 🔄 |
+| SSRF | ✅ |
 | XXE | 🔄 |
 
 ---
