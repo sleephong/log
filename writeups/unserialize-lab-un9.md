@@ -474,14 +474,15 @@ file_put_contents(__DIR__ . '/p.txt', ...);   // __DIR__ = 脚本所在目录
 
 ---
 
-# 附录：五个协议层问答
+# 附录：六个协议层问答
 
-> 这五条**比 payload 本身更通用**。以后遇到 Header 注入、请求走私、CRLF 相关的题，都是同一套逻辑。
+> 这六条**比 payload 本身更通用**。以后遇到 Header 注入、请求走私、CRLF 相关的题，都是同一套逻辑。
 
 **它们其实指向同一件事**：
 
 > HTTP 是一条**线性文本协议**，不是对象图。
 > 头在空行处截止（A4）→ 所以原本的头会失效（A1）；重复头取第一个（A2）→ 所以想覆盖必须排前面；`Content-Type` 决定服务端怎么解释 body（A3）→ 所以它值得抢；跨进程传这条带换行的文本时，编码只能做一次（A5）。
+> **而以上全部成立的前提，是头名和类型值都大小写不敏感（A6）** —— 否则"我们的头"和"原本的头"在服务器眼里就是两个不同的头，谈不上覆盖。
 
 ---
 
@@ -719,4 +720,72 @@ requests.get(url, params={"tryhackme": p})
 **C 和 D 是同一个错误的两种形态**：C 是"编码了两次"，D 是"该编码的没人编码"。
 
 **为什么推荐 A**：原始串里有**真换行**，没法通过命令行参数、也没法复制粘贴传递（`input()` 会在第一个换行截断）。**编码成一行纯 ASCII 之后才能安全落盘做中转** —— 这就是 `p.txt` 存在的全部理由。
+
+---
+
+## A6. HTTP 头的大小写敏感吗？（靶机实测 4 组）
+
+**结论：头的名字、媒体类型的值，都不敏感——四种写法全部打通。**
+
+### 实测方法
+
+用 `url` 里的标记区分是哪一次发的（`py=flag&url=<token>/<标记>`），然后看 webhook 收到哪几个标记。
+
+| 组 | 头名 | 值 | 结果 |
+|---|---|---|---|
+| **D** 对照组 | `Content-Type` | `application/x-www-form-urlencoded` | ✅ |
+| **A** 头名全小写 | `content-type` | `application/x-www-form-urlencoded` | ✅ |
+| **B** 值全大写 | `Content-Type` | `APPLICATION/X-WWW-FORM-URLENCODED` | ✅ |
+| **C** 头名 + 值都乱写 | `CoNtEnT-TyPe` | `Application/X-WWW-Form-Urlencoded` | ✅ |
+
+四次响应全部是 `200 + 0 字节`（= 成功信号），webhook 分别收到：
+
+```
+.../caseD-canonical?flag=flag{...}
+.../caseA-lowername?flag=flag{...}
+.../caseB-uppervalue?flag=flag{...}
+.../caseC-mixed?flag=flag{...}
+```
+
+### 为什么
+
+| 对象 | 规范 |
+|---|---|
+| **头名** | RFC 7230 §3.2：field name **大小写不敏感** → `content-type` 和 `Content-Type` 是**同一个头** |
+| **媒体类型值** | RFC 2045：media type 的 type/subtype **大小写不敏感** → PHP 实现用的是不敏感匹配，所以 B/C 组也过 |
+
+### ⚠️ 但"不敏感"的范围没你想的那么广
+
+| 对象 | 敏感？ | 说明 |
+|---|---|---|
+| HTTP 头**名字** | ❌ 不敏感 | `content-type` = `Content-Type` |
+| **媒体类型**（Content-Type 的值） | ❌ 不敏感 | 规范 + PHP 5.5 实测 |
+| HTTP **方法** | ✅ **敏感** | `get /x HTTP/1.1` 不合法 |
+| **参数值**（`charset=`、`boundary=`） | ✅ **敏感** | `boundary=AbC` 必须和 body 里的分隔符**逐字符一致** |
+| URL 的**路径** | ✅ 敏感 | 但**域名**不敏感 |
+| HTTP/2 头名 | **必须全小写** | 规范强制，大写直接报错 |
+
+**最容易踩的是 `boundary`**：`multipart/form-data; boundary=----WebKitFormBoundaryXyZ` 里那串随机字符，**错一个字母整个 body 就解析不出来**。
+
+### 实践建议：能跑 ≠ 该乱写
+
+统一写**规范写法**，三个理由：
+
+1. **跨目标更稳**：PHP 宽容，但某些 Java 框架 / WAF 规则会做**精确字符串比较**
+2. **有些网关对畸形大小写起疑**：`CoNtEnT-TyPe` 在流量里很像攻击特征，容易触发告警
+3. **可读性**：两周后自己回看，`Content-Type` 一眼就懂
+
+> **规则**：大小写**可以**乱写（但别乱写）；**`Content-Length` 的数字和 `boundary` 一个字都不能错。**
+
+### ⭐ 和 A2 的联动：这是"首值优先"能生效的前提
+
+```
+我们注入的：        content-type: application/x-www-form-urlencoded   ← 小写
+SoapClient 原本的： Content-Type: text/xml; charset=utf-8            ← 规范写法
+```
+
+正因为服务器把它们认成**同一个头**，才会走"重复头 → 取第一个"的逻辑 → **我们的赢**。
+
+**反过来想**：如果服务器是大小写敏感的（现实中基本不存在），它会看到**两个不同的头**，那"首值优先"根本无从谈起，**这个注入手法也就不成立了**。
+
 
