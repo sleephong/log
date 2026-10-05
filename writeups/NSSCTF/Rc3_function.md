@@ -5,7 +5,7 @@
 | 赛事 | NSSCTF（动态靶机） |
 | 题目 | `Rc3_function` |
 | 考点 | PHP `create_function` 代码注入（**它就是 `eval`**） |
-| flag | 待补 |
+| flag | 未记录（当时只记了 payload） |
 | 状态 | ✅ 已通关（10-02） |
 | 原始记录 | [logs/2026-10-02.md](../../logs/2026-10-02.md) |
 

@@ -9,9 +9,10 @@
 
 | # | 题目 | 时间 | 考点 | flag | 状态 | WP |
 |---|---|---|---|---|---|---|
-| 1 | `Rc3_function` | 10-02 | **PHP `create_function` 代码注入** | 待补 | ✅ 已通关 | [Rc3_function.md](./Rc3_function.md) |
+| 1 | `Rc3_function` | 10-02 | **PHP `create_function` 代码注入** | 未记录 | ✅ 已通关 | [Rc3_function.md](./Rc3_function.md) |
 
-> **flag 待补**：这两道题当时只记了 payload，没把 flag 抄下来。下次重打时补上。
+> **flag 未记录**：当时只记了 payload，没抄 flag。
+> 本仓库**以「过程」为主** —— 考点、payload、踩坑比 flag 重要，所以 flag 不做强制要求（见 [writeups/README.md](../README.md)）。
 
 ---
 

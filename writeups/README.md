@@ -22,15 +22,23 @@
 | 赛事 | 题目 | 日期 | 考点 | flag | 状态 |
 |---|---|---|---|---|---|
 | 极客大挑战 2025 | [popself](./极客大挑战SYC/2025-popself.md) | 10-04 | 6 跳 POP 链 + 双 md5 魔术哈希 + `?24[SYC.zip=` 参数名绕过 | `SYC{Round_And_r0und_LMAO}` | ✅ |
-| 极客大挑战 2024 | [ez_http](./极客大挑战SYC/2024-ez_http.md) | 10-04 | 六级链 + JWT HS256 伪造 + base64 长度对齐 | `SYC{b06d1f4d-2a07-4226-868f-43afbe6f3a5e}` | ✅ |
-| 极客大挑战 2023 | [unsign](./极客大挑战SYC/2023-unsign.md) | 10-04 | 3 跳 POP 链（`syc`/`lover`/`web`）+ `echo` 断点调试 | 待补 | 🔄 |
+| 极客大挑战 2024 | [ez_http](./极客大挑战SYC/2024-ez_http.md) | 10-04 | 六级链 + JWT HS256 伪造（改 hasFlag + 重签） | `SYC{b06d1f4d-2a07-4226-868f-43afbe6f3a5e}` | ✅ |
+| 极客大挑战 2023 | [unsign](./极客大挑战SYC/2023-unsign.md) | 10-04 | 3 跳 POP 链（`syc`/`lover`/`web`）+ `echo` 断点调试 | 未记录 | 🔄 |
 | 0xGame | [字符白名单命令执行](./0xGame/字符白名单命令执行.md) | 10-02 →10-03 | 字符白名单 + glob 通配符「钓」命令与文件名 | `0xGame{72119ccb-…}` | ✅ |
 | 0xGame | [奶蛙的博客](./0xGame/奶蛙的博客.md) | 10-02 | gzip → base64 → 分片拼装（+ HTML 实体 + 诱饵链） | `0xGame{n41w4_l4ugh5…}` | ✅ |
 | 0xGame | [ATP 在线实验平台](./0xGame/ATP在线实验平台.md) | 10-02 | 客户端保护绕过（前端 JS 就是接口文档） | `0xGame{26970c47-…}` | ✅ |
 | PolarCTF | [swp](./PolarCTF/swp.md) | 10-03 | Vim 交换文件泄露 + `preg_match` 三态 + PCRE 回溯上限绕过 | `flag{4560b3bfea…}` | ✅ |
 | PolarCTF | [seek flag](./PolarCTF/seek-flag.md) | 10-03 | 三段式信息收集 + Cookie 越权 | `flag{7ac5b3ca87…}` | ✅ |
-| NSSCTF | [Rc3_function](./NSSCTF/Rc3_function.md) | 10-02 | `create_function` 代码注入 | 待补 | ✅ |
+| NSSCTF | [Rc3_function](./NSSCTF/Rc3_function.md) | 10-02 | `create_function` 代码注入 | 未记录 | ✅ |
 | unserialize-lab | [un9](./靶场/unserialize-lab-un9.md) | 09-30 →10-01 | `SoapClient::__call` SSRF + CRLF 抢 `Content-Type` | — | ✅ |
+
+## 📌 两条记录约定
+
+1. **flag 不强制记录。** 本仓库以「**过程**」为主 —— 考点、payload、踩坑比 flag 重要。
+   表里写 `未记录` 的地方是**有意留白**，不是待办，别去补。
+2. **题目细节只在这里。** 日志（`logs/`）只留「当天做了什么 + 链接」，不要重复搬一遍。
+
+---
 
 > 跨零点的题目（如 0xGame 字符白名单命令执行 22:59 → 次日 01:47）**归到开始那天** —— 规则见 [根 README](../README.md#-日志日期归属规则跨零点必看)。
 
