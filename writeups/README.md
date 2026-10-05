@@ -22,7 +22,7 @@
 | 赛事 | 题目 | 日期 | 考点 | flag | 状态 |
 |---|---|---|---|---|---|
 | 极客大挑战 2025 | [popself](./极客大挑战SYC/2025-popself.md) | 10-04 | 6 跳 POP 链 + 双 md5 魔术哈希 + `?24[SYC.zip=` 参数名绕过 | `SYC{Round_And_r0und_LMAO}` | ✅ |
-| 极客大挑战 2024 | [ez_http](./极客大挑战SYC/2024-ez_http.md) | 10-04 | 六级链 + JWT HS256 伪造（改 hasFlag + 重签） | `SYC{b06d1f4d-2a07-4226-868f-43afbe6f3a5e}` | ✅ |
+| 极客大挑战 2024 | [ez_http](./极客大挑战SYC/2024-ez_http.md) | 10-04 | 六级链 + JWT HS256 伪造（改 hasFlag + 重签） | `SYC{...}`（每实例随机） | ✅ |
 | 极客大挑战 2023 | [unsign](./极客大挑战SYC/2023-unsign.md) | 10-04 | 3 跳 POP 链（`syc`/`lover`/`web`）+ `echo` 断点调试 | 未记录 | 🔄 |
 | 0xGame | [字符白名单命令执行](./0xGame/字符白名单命令执行.md) | 10-02 →10-03 | 字符白名单 + glob 通配符「钓」命令与文件名 | `0xGame{72119ccb-…}` | ✅ |
 | 0xGame | [奶蛙的博客](./0xGame/奶蛙的博客.md) | 10-02 | gzip → base64 → 分片拼装（+ HTML 实体 + 诱饵链） | `0xGame{n41w4_l4ugh5…}` | ✅ |

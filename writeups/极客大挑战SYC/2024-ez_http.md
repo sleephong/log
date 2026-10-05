@@ -5,7 +5,7 @@
 | 平台 | 极客大挑战 2024（SYC 招新赛）· ctfplus 动态靶机 |
 | 题目 | **ez_http** —— 六级链 HTTP 头综合题（L1~L6 串行） |
 | 考点 | GET/POST 参数 → `Referer` → **IP 头枚举** → 自定义头 → **JWT HS256 伪造（改 hasFlag + 重签）** |
-| flag | `SYC{b06d1f4d-2a07-4226-868f-43afbe6f3a5e}` |
+| flag | `SYC{b06d1f4d-2a07-4226-868f-43afbe6f3a5e}`（**该实例的**；ctfplus 每个实例随机生成，换实例必变） |
 | 状态 | ✅ 已通关（原始记录：[logs/2026-10-04.md](../../logs/2026-10-04.md)） |
 | 一句话 | 六项条件必须**一次全带**，任何一项缺失都停在那一关的报错上 |
 
@@ -408,7 +408,7 @@ forged = jwt_forge(token, key, b"false", b"true")
 
 r = requests.post(URL, data=FORM, headers=HEADERS, cookies={"token": forged})
 print(re.search(r"flag:([^<\s]+)", r.text).group(1))
-# → SYC{b06d1f4d-2a07-4226-868f-43afbe6f3a5e}
+# → SYC{...}   ← 每个实例的 flag 都不同，别抄这个值，跑脚本就行
 ```
 
 > **两个 `requests` 参数名别写错**：`cookies=`（复数，值是字典）、`res.text`（不是 `res.txt`）。
