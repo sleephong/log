@@ -1,6 +1,6 @@
 # 08 · SSRF（服务端请求伪造）
 
-> 状态：✅ 已通关（un9 已拿下，见 `writeups/unserialize-lab-un9.md`）
+> 状态：✅ 已通关（un9 已拿下，见 `writeups/靶场/unserialize-lab-un9.md`）
 
 ---
 
@@ -45,6 +45,17 @@ X-Client-IP: 127.0.0.1        ❌
 **⭐ `REMOTE_ADDR` 是 TCP 连接的源地址** —— **由内核填充，HTTP 层改不了。**
 
 **→ 唯一办法：SSRF。**
+
+> **⚠️ 但别把这条记成「IP 头全没用」** —— 关键看代码读的是哪一个：
+
+| 代码里写的是 | 改 HTTP 头有用吗 | 例子 |
+|---|---|---|
+| `$_SERVER['REMOTE_ADDR']` | ❌ **全无效** → 只能靠 SSRF | **un9（本题）** |
+| `$_SERVER['HTTP_X_FORWARDED_FOR']` | ✅ 有用（发 `X-Forwarded-For: 127.0.0.1`） | — |
+| `$_SERVER['HTTP_X_REAL_IP']` | ✅ 有用（**且可能只认这一个**） | geekchallenge2024 第四关 |
+
+**判据**：源码里是 `REMOTE_ADDR` 还是 `HTTP_xxx`。前者改头没用；后者**要把 IP 头全枚举一遍**。
+完整枚举清单 + 两者区别 → [13-代理IP头XFF与X-Real-IP.md](./13-代理IP头XFF与X-Real-IP.md)
 
 ---
 
