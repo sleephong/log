@@ -1,7 +1,5 @@
 # 02 · Python / requests（task2）
 
-> 状态：✅ 已掌握
-
 ## 一、requests 四件套
 
 ```python
@@ -20,9 +18,7 @@ res = requests.post(url, data={...},   headers={...}, cookies={...})   # POST
 | `cookies` | Cookie | 会话 |
 | `files` | 文件上传 | multipart |
 
-**⭐ 易错**：`params`（GET） vs `data`（POST），别混。
-
----
+**易错**：`params`（GET） vs `data`（POST），别混。
 
 ## 二、响应对象
 
@@ -37,9 +33,7 @@ res.url             # 最终 URL
 res.history         # 重定向历史
 ```
 
-**⭐ 抓 flag 常看 `res.headers`**（后端把 flag 放响应头）。
-
----
+**抓 flag 常看 `res.headers`**（后端把 flag 放响应头）。
 
 ## 三、JSON ↔ Python
 
@@ -60,18 +54,14 @@ res.json()                          # 自动解析
 | `body: new URLSearchParams({...})` | `data={...}` |
 | `body: new FormData()` | `files={...}` |
 
----
-
 ## 四、字符串格式化
 
 ```python
 name = "小明"
-f"姓名：{name}"                    # f-string ⭐
+f"姓名：{name}"                    # f-string
 "姓名：%s" % name                  # % 格式化
 "姓名：{}".format(name)            # format
 ```
-
----
 
 ## 五、基础语法易错
 
@@ -84,9 +74,7 @@ f"姓名：{name}"                    # f-string ⭐
 | **真值** | `0`、`""`、`[]`、`{}`、`None` 都是 **False** |
 | **类型** | `"123" + 1` 报错，要 `int("123") + 1` |
 
----
-
-## 六、盲注脚本模板（实战常用）
+## 六、盲注脚本模板
 
 ```python
 import requests
@@ -117,9 +105,3 @@ print(name)
 
 # 时间盲注版：check 里用 if(条件, sleep(5), 1)，判断耗时 > 4.5s
 ```
-
----
-
-## 七、一句话
-
-> **GET 用 `params=`，POST 用 `data=`（JSON 用 `json=`）**。**抓 flag 常看 `res.headers`**。**`range` 含头不含尾**。**盲注脚本核心：二分 + `ascii(substr(...))`**。

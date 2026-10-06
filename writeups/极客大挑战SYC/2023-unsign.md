@@ -6,31 +6,27 @@
 | 题目 | unsign（类名 `syc` / `lover` / `web`，所以俗称「syc 题」） |
 | 考点 | 三跳 POP 链 / 魔术方法触发时机 / `echo` 断点调试 |
 | flag | 未记录（当时卡在属性名 `eva1`/`eval` 拼写上） |
-| 状态 | 🔄 链子已推通 |
+| 状态 | 链子已推通 |
 | 原始记录 | [logs/2026-10-04.md](../../logs/2026-10-04.md) |
 
 > 相关笔记：[07 · PHP 反序列化与 POP 链](../../notes/07-PHP反序列化.md)
-
----
 
 ## 一句话
 
 > 只有三个类、三跳，**第一次完全自己把链子推出来**的一题：`syc::__destruct` 把 `$cuit` 当函数调 → `lover::__invoke` 读 `$yxx->QW` → `web::__get` 落地 `$eva1($interesting)`。
 > 链子本身一次就通，却在**最后一个属性名的一个字符**上栽了 —— `eva1`（数字 `1`）写成了 `eval`（字母 `l`）。
 
----
-
 ## 一、题目：三个类
 
 ```php
 class syc   { public $cuit; }
 class lover { public $yxx; public $QW; }
-class web   { public $eva1; public $interesting; }   // ★ 第 4 个字符是数字 1
+class web   { public $eva1; public $interesting; }   // 第 4 个字符是数字 1
 ```
 
 入口是 `unserialize($_POST['url'])`（POST，不是 GET），反序列化的返回值**没有人接** —— 这一点很关键，见下面「魔术方法触发时机」。
 
-### ⭐ POP 链 = **对象图**，不是「一个对象」
+### POP 链 = **对象图**，不是「一个对象」
 
 一开始以为 payload 是「一个对象」。其实不是：
 
@@ -49,8 +45,6 @@ syc 对象
 | **对象** | 一个 `new Xxx` 出来的实例 |
 | **属性** | 对象之间的「电线」 |
 | **类** | 决定这个对象**能触发哪个魔术方法** |
-
----
 
 ## 二、三跳链的推理过程
 
@@ -77,7 +71,7 @@ syc 对象
 > **这题能跑起来的关键就在这里**：`unserialize(...)` 的返回值**没有人接**，
 > 拿到手就立刻被回收 → `__destruct` 自动开跑，链子自己动起来。
 
-### 2.3 ⭐⭐ `echo` 断点法：源码自带「进度条」
+### 2.3 `echo` 断点法：源码自带「进度条」
 
 这题三个魔术方法里**各有一个 echo** —— 出题人等于给了三个断点：
 
@@ -93,9 +87,9 @@ web::__get        →  echo("get!<br>");
 |---|---|
 | 什么都没有 | `unserialize` 就失败了（payload 格式/长度错） |
 | 只有 `action!` | 第一跳没接上 |
-| `action!` + `invoke!` | ✅ 第一跳通，第二跳没接上 |
-| 三个 echo 都有 | ✅ 前两跳通，终点没配好 |
-| 三个 echo + 命令回显 | 🚩 通关 |
+| `action!` + `invoke!` | 第一跳通，第二跳没接上 |
+| 三个 echo 都有 | 前两跳通，终点没配好 |
+| 三个 echo + 命令回显 | 通关 |
 
 **这套方法以后每题都能用**：先扫源码里有哪些 echo/输出，把它们当断点。
 
@@ -125,8 +119,6 @@ payload 只是个**类名字符串 + 属性数据**；反序列化时 PHP 拿类
 | `new web` 没括号 | 构造函数**没参数时括号可省**，等于 `new web()` |
 | `serialize()` 会**递归** | 只序列化最外层对象，嵌套的对象自动跟着进去 |
 
----
-
 ## 三、payload 生成器
 
 ### 3.1 完整 PHP 生成器
@@ -135,7 +127,7 @@ payload 只是个**类名字符串 + 属性数据**；反序列化时 PHP 拿类
 <?php
 class syc   { public $cuit; }
 class lover { public $yxx; public $QW; }
-class web   { public $eva1; public $interesting; }   // ★ 数字 1
+class web   { public $eva1; public $interesting; }   // 数字 1
 
 $obj = new syc;
 $obj->cuit = new lover;                     // ① syc → lover（__destruct 里 $cuit()）
@@ -170,11 +162,11 @@ $obj->cuit->yxx->interesting = "env";
 
 | 类 | 有 `__get`？ | 有 `QW` 属性？ | 能接棒？ |
 |---|---|---|---|
-| `syc` | ❌ | ❌ | ❌ |
-| `lover` | ❌ | ✅ 有 | ❌（读 `QW` 是正常读取，不触发魔术方法） |
-| **`web`** | ✅ | ❌ | ✅ **唯一解** |
+| `syc` | 否 | 否 | 不能 |
+| `lover` | 否 | 有 | （读 `QW` 是正常读取，不触发魔术方法） |
+| **`web`** | 是 | 否 | **唯一解** |
 
-> ⭐ 反过来记：`lover` 里**必须有 `QW` 属性**才不会触发自己的 `__get`；
+> 反过来记：`lover` 里**必须有 `QW` 属性**才不会触发自己的 `__get`；
 > 而 `web` 里**必须没有** `QW`，读它才会掉进 `__get`。**「有」和「没有」都是设计出来的。**
 
 ### 3.3 序列化串长这样（129 字节）
@@ -202,8 +194,6 @@ O:3:"syc":1:{s:4:"cuit";O:5:"lover":2:{s:3:"yxx";O:3:"web":2:{s:4:"eva1";s:6:"sy
 > 长度会随命令变：`interesting = "env"`（3 字节）→ **129**；换成 `"cat /flag"`（9 字节）→ **135**。
 > **改命令就要重新生成**，别手动改字符串 —— `s:N:"..."` 里的 `N` 对不上，`unserialize` 直接失败。
 
----
-
 ## 四、发送
 
 入口是 **POST**（`$_POST['url']`），不是 GET：
@@ -214,7 +204,7 @@ import requests
 BASE = "http://<host>/"
 
 payload = open("payload.txt", encoding="utf-8").read().strip()
-r = requests.post(BASE, data={"url": payload})       # ★ $_POST['url']
+r = requests.post(BASE, data={"url": payload})       # $_POST['url']
 print(r.text.split("</code>")[-1].strip())           # 砍掉 highlight_file 的源码
 ```
 
@@ -229,15 +219,13 @@ print(r.text.split("</code>")[-1].strip())           # 砍掉 highlight_file 的
 | **读文件** | `"readfile"` / `"highlight_file"` | 文件路径 |
 | 看配置 | `"phpinfo"` | 随便 |
 
----
-
 ## 五、踩坑
 
-### 5.1 ⭐⭐ `eva1`（数字 1）vs `eval`（字母 l）
+### 5.1 `eva1`（数字 1）vs `eval`（字母 l）
 
 第 4 个字符之差，链子全废：
 
-| | 靶机 | 我写的 |
+|  | 靶机 | 我写的 |
 |---|---|---|
 | 第 4 个字符 | 数字 **`1`**（hex `31`） | 字母 **`l`**（hex `6C`） |
 
@@ -254,25 +242,23 @@ print(r.text.split("</code>")[-1].strip())           # 砍掉 highlight_file 的
 
 | 问题 | 现象 | 原因 | 解决 |
 |---|---|---|---|
-| **`eval` 写成 `eva1`**（或反过来） | 前三个 echo 都正常，终点 `Fatal error: Function name must be a string` | 属性名第 4 个字符 数字`1` vs 字母`l`；**长度都是 4 所以不报错** | ⭐ **从靶机源码复制类定义** + **本地复现验证** |
+| **`eval` 写成 `eva1`**（或反过来） | 前三个 echo 都正常，终点 `Fatal error: Function name must be a string` | 属性名第 4 个字符 数字`1` vs 字母`l`；**长度都是 4 所以不报错** | **从靶机源码复制类定义** + **本地复现验证** |
 | `yxx` 不接线 | 只看到 `action!` `invoke!`，后面空白 | `$this->yxx` 是 null → `null->QW` 只是 notice，**静默断链** | 把「接力棒」接上（`->yxx = new web`） |
 | 只 `echo serialize()` | 本地看到 payload 了，靶机毫无反应 | `echo` 只是**打印**，没有发送 | 必须 **POST** 出去 |
 | 本地跑不出问题 | 本地 8.2 行为可能和靶机不同 | 靶机是 PHP 7.3.4 | **以靶机实测为准** |
 
-### ⭐ 这类「一个字符」的坑怎么防
+### 这类「一个字符」的坑怎么防
 
 | 方法 | 说明 |
 |---|---|
 | **① 类定义从靶机复制粘贴** | 别手打。整段 `class web {...}` 贴进生成器 |
-| **② 本地复现验证** ⭐ | 把靶机的类**原样**抄到本地，跑一次 `unserialize`。**这是唯一能抓到「长度一样但名字不同」的方法** |
-| ③ 数长度 | ❌ **这次没用**（`eval`/`eva1` 都是 4 字符） |
+| **② 本地复现验证** | 把靶机的类**原样**抄到本地，跑一次 `unserialize`。**这是唯一能抓到「长度一样但名字不同」的方法** |
+| ③ 数长度 | **这次没用**（`eval`/`eva1` 都是 4 字符） |
 | ④ 换编程字体 | 用能区分 `1` `l` `I` `O` `0` 的字体 |
-
----
 
 ## 六、可复用方法论
 
-### 6.1 ⭐ `echo` 断点法（本 WP 最值钱的一条）
+### 6.1 `echo` 断点法（本 WP 最值钱的一条）
 
 **源码里每一个 `echo` / 输出都是一个免费断点。**
 
@@ -288,7 +274,7 @@ print(r.text.split("</code>")[-1].strip())           # 砍掉 highlight_file 的
 action!                    → ① 通了
 action! invoke!            → ② 通了
 action! invoke! get!       → ③ 进入终点
-action! invoke! get! <回显> → 🚩 通关
+action! invoke! get! <回显> → 通关
 ```
 
 **没有 echo 的题**：这条方法就要靠「报错位置」来判断 —— 报错发生在哪一跳，说明它前面那几跳都通了。
@@ -310,8 +296,6 @@ action! invoke! get! <回显> → 🚩 通关
 1. **类定义从靶机复制，绝不手打** —— 本次栽的就是手打。
 2. **生成完先在本地 `unserialize` 跑一遍** —— 能抓属性名/长度的错。
 3. **改动前先看 `echo` 停在哪** —— 别盲改 payload。
-
----
 
 ## 附录：一句话总结
 

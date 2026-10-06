@@ -1,18 +1,16 @@
 # 13 · 代理 IP 头：X-Forwarded-For 与 X-Real-IP
 
-> 状态：✅ 已掌握（**geekchallenge2024 实证**）
-
----
+geekchallenge2024 
 
 ## 一、本质区别（一句话）
 
-| | **X-Forwarded-For (XFF)** | **X-Real-IP** |
+|  | **X-Forwarded-For (XFF)** | **X-Real-IP** |
 |---|---|---|
-| 本质 | **历史记录**（IP 列表，逗号分隔）| **快照**（单个 IP）|
+| 本质 | **历史记录**（IP 列表，逗号分隔） | **快照**（单个 IP） |
 | 长度 | 多个 —— 逐跳**追加** | 通常 1 个 —— 只保留**最后一跳** |
 | 顺序 | **最左 = 最初的真实客户端**，最右 = 最后一跳代理 | 只有最后一跳 |
 | 标准性 | **事实标准（de-facto）**，几乎所有代理 / CDN 都发 | **非标**，主要是 Nginx 社区惯例 |
-| 典型 Nginx 赋值 | `$proxy_add_x_forwarded_for`（追加）| `$remote_addr`（覆盖）|
+| 典型 Nginx 赋值 | `$proxy_add_x_forwarded_for`（追加） | `$remote_addr`（覆盖） |
 | 部署覆盖率 | 高 | 主要 Nginx 生态 |
 
 ```
@@ -20,8 +18,6 @@ X-Forwarded-For: 203.0.113.7, 10.0.0.5, 10.0.0.9
                  ↑ 真实客户端   ↑ 代理1    ↑ 代理2（最后一跳）
 X-Real-IP: 203.0.113.7
 ```
-
----
 
 ## 二、PHP 取值
 
@@ -32,8 +28,6 @@ $_SERVER['HTTP_X_REAL_IP']         // "203.0.113.7"
 
 > 规律：头名转大写、`-` 换 `_`、前面加 `HTTP_`。
 > 例外：`Content-Type` / `Content-Length` 等有独立键名。
-
----
 
 ## 三、安全：两者都能伪造，**绝不能裸信**
 
@@ -59,21 +53,7 @@ $first = trim(explode(',', $_SERVER['HTTP_X_FORWARDED_FOR'] ?? '')[0]);
 
 **常见坑**：`0.0.0.0`、`127.0.0.1` 与 `::1` 混用、带端口 `127.0.0.1:8080`、IPv4-mapped IPv6 `::ffff:127.0.0.1` —— 只做字符串比较的过滤都能被绕。
 
----
-
-## 四、更新的标准：RFC 7239 `Forwarded`
-
-```http
-Forwarded: for=192.0.2.60;proto=http;by=203.0.113.43
-```
-
-- 格式带 `for=` / `proto=` / `by=` 前缀，多个代理用逗号分隔。
-- 是**正式标准**（取代各种 `X-` 私货），但**实际部署率低**，CTF 和真实站点里仍以 XFF 为主。
-- 解析坑：`for=` 的值可能是 `unknown`、`_hidden`、带端口 `127.0.0.1:8080`、加引号 `for="[2001:db8::1]"`。
-
----
-
-## 五、CTF 实证（geekchallenge2024）
+## 四、CTF 实证（geekchallenge2024）
 
 > 完整题解 → [极客大挑战2024 · ez_http（六级链）](../writeups/极客大挑战SYC/2024-ez_http.md)（这一节是那道题第 4 关的另一个视角）
 
@@ -81,8 +61,8 @@ Forwarded: for=192.0.2.60;proto=http;by=203.0.113.43
 
 | 尝试 | 结果 |
 |---|---|
-| `X-Forwarded-For: 127.0.0.1` | ❌ 返回 `nonono,you're not from local ip` |
-| `X-Real-IP: 127.0.0.1` | ✅ **过关** |
+| `X-Forwarded-For: 127.0.0.1` | 返回 `nonono,you're not from local ip` |
+| `X-Real-IP: 127.0.0.1` | **过关** |
 
 **结论**：出题人代码**只读 `$_SERVER["HTTP_X_REAL_IP"]`**，写 XFF 完全没用。
 
@@ -100,12 +80,7 @@ Forwarded: for=127.0.0.1
 True-Client-IP: 127.0.0.1
 ```
 
-> 一个一个试也行，但**一次性全带上**最省事；注意有些框架会取「出现的第一/最后一个」，可换顺序再试。
-> 若全部无效，说明校验的是 **TCP 层 `REMOTE_ADDR`** → 只能靠 **SSRF** 让服务器自己发请求（见 `08-SSRF.md`）。
-
----
-
-## 六、一句话
+## 五、一句话
 
 > **XFF = 逗号分隔的历史记录（最左是真实客户端），X-Real-IP = 单个快照（最后一跳）。**
 > **两个都能伪造 → 必须可信代理白名单 + 边缘覆盖，取 XFF 要取最左并跳过可信代理。**

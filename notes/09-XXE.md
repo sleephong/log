@@ -1,8 +1,4 @@
-# 09 · XXE（XML 外部实体注入）
-
-> 状态：🔄 进行中
-
----
+# 09 · XXE
 
 # 一、是什么
 
@@ -11,8 +7,6 @@
 > **程序解析了"包含恶意外部实体"的 XML** → **读本地文件 / SSRF / 甚至 RCE**。
 
 **根因**：XML 解析器**没禁用外部实体**，用户可控的 XML 被解析。
-
----
 
 # 二、XML 实体
 
@@ -28,8 +22,6 @@ XML 里 `<!ENTITY ...>` 定义"实体"（类似变量），引用时 `&名;` 被
 <root>&a;</root>              <!-- 去读文件！ -->
 ```
 
----
-
 # 三、能读什么 / 危害
 
 | 目标 | `SYSTEM` 指向 |
@@ -39,18 +31,14 @@ XML 里 `<!ENTITY ...>` 定义"实体"（类似变量），引用时 `&名;` 被
 | **SSRF（内网）** | `http://127.0.0.1/admin`、`http://内网IP/` |
 | **RCE（特定）** | `expect://`（罕见） |
 
----
-
 # 四、触发点（在哪解析 XML）
 
 | 触发点 | 说明 |
 |---|---|
 | **上传 XML 文件被解析** | 直接 |
-| **⭐ 上传 SVG** | **SVG 就是 XML**，图片处理时被解析 |
+| **上传 SVG** | **SVG 就是 XML**，图片处理时被解析 |
 | **提交 XML 格式数据** | POST body，`Content-Type: application/xml` |
 | **SOAP / SAML 接口** | 协议本身就是 XML |
-
----
 
 # 五、最简 payload
 
@@ -59,14 +47,14 @@ XML 里 `<!ENTITY ...>` 定义"实体"（类似变量），引用时 `&名;` 被
 <r><name>&x;</name></r>
 ```
 
-**⚠️ 三个必须遵守的规则**：
+**三个必须遵守的规则**：
 | 规则 | 违反后果 |
 |---|---|
 | 根元素名必须**匹配目标** | 解析成功但后端取不到数据 |
 | 实体要放在**会回显的字段**里 | 读了文件但看不到 |
 | `SYSTEM` 后必须有**空格** | 解析失败 |
 
-**⚠️ `file:///` 是三斜杠**：
+**`file:///` 是三斜杠**：
 ```
 file://      ← 协议 + 空主机名
       /flag  ← 绝对路径
@@ -77,8 +65,6 @@ file://      ← 协议 + 空主机名
 Linux:   /flag  /flag.txt  /etc/passwd  /proc/self/environ  /root/flag
 Windows: C:/Windows/win.ini  C:/Users/Administrator/Desktop/flag.txt
 ```
-
----
 
 # 六、SVG XXE（**图片上传点常中**）
 
@@ -94,9 +80,7 @@ Windows: C:/Windows/win.ini  C:/Users/Administrator/Desktop/flag.txt
 
 **网站解析 SVG 时，`&xxe;` 触发读 `/flag` → 内容显示在 text 里。**
 
----
-
-# 七、无回显 → 带外 XXE（OOB）
+# 七、无回显 → 带外 XXE
 
 **如果页面不回显**，用**参数实体 + 外带**：
 
@@ -115,9 +99,7 @@ Windows: C:/Windows/win.ini  C:/Users/Administrator/Desktop/flag.txt
 <foo>x</foo>
 ```
 
-**⚠️ 参数实体用 `%名;` 引用**（不是 `&名;`）。
-
----
+**参数实体用 `%名;` 引用**（不是 `&名;`）。
 
 # 八、做题套路
 
@@ -128,8 +110,6 @@ Windows: C:/Windows/win.ini  C:/Users/Administrator/Desktop/flag.txt
 ④ 读 PHP 源码要 base64：php://filter/read=convert.base64-encode/resource=flag.php
 ⑤ 读不到 → 试 OOB 带外
 ```
-
----
 
 # 九、一句话
 

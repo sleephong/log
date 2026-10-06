@@ -3,18 +3,14 @@
 > **NSSCTF** —— 国内公开 CTF 练习平台（动态靶机，每次开题给一个临时域名 + 端口）。
 > 本目录只放**从 NSSCTF 上打的题**，按题一篇。
 
----
-
 ## 题目清单
 
 | # | 题目 | 时间 | 考点 | flag | 状态 | WP |
 |---|---|---|---|---|---|---|
-| 1 | `Rc3_function` | 10-02 | **PHP `create_function` 代码注入** | 未记录 | ✅ 已通关 | [Rc3_function.md](./Rc3_function.md) |
+| 1 | `Rc3_function` | 10-02 | **PHP `create_function` 代码注入** | 未记录 | 已通关 | [Rc3_function.md](./Rc3_function.md) |
 
 > **flag 未记录**：当时只记了 payload，没抄 flag。
 > 本仓库**以「过程」为主** —— 考点、payload、踩坑比 flag 重要，所以 flag 不做强制要求（见 [writeups/README.md](../README.md)）。
-
----
 
 ## 考点分布
 
@@ -22,8 +18,6 @@
 |---|---|---|
 | **代码执行类函数**（`create_function` = `eval`） | Rc3_function | [10 · 信息收集与代码审计 §2.1](../../notes/10-信息收集与代码审计.md) |
 | 「用户输入拼进代码模板再 eval」的通用套路 | Rc3_function | 见本篇 §五 |
-
----
 
 ## 复盘
 
@@ -38,8 +32,6 @@
 1. 遇到代码执行类 sink，先**手工把拼接结果写出来**
 2. 改 payload 时，**先确认整段能编译通过**，再谈执行 —— 否则"没反应"会被误判成"没执行"
 3. 用 `//` 吃掉模板残留的 `) { }`
-
----
 
 ## 相关
 
