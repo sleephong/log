@@ -7,7 +7,7 @@
 
 | 赛事 | 题目 | 通关 | 核心考点 | 目录 |
 |---|---|---|---|---|
-| **极客大挑战（SYC）** | 3 | 2 / 1 | PHP 反序列化 POP 链（3/6 跳）、JWT HS256、IP 头枚举 | [极客大挑战SYC/](./极客大挑战SYC/README.md) |
+| **极客大挑战（SYC）** | 6 | 6 / 0 | PHP 反序列化 POP 链（3/6 跳）、JWT HS256、IP 头枚举、文件上传双后缀、内联 JS 编码、多层代码审计绕过 | [极客大挑战SYC/](./极客大挑战SYC/README.md) |
 | **0xGame** | 3（+2 待补） | 3 | 字符白名单命令执行、编码链还原、客户端保护绕过 | [0xGame/](./0xGame/README.md) |
 | **PolarCTF** | 2 | 2 | PCRE 回溯上限绕过 `preg_match`、三段式信息收集、Cookie 越权 | [PolarCTF/](./PolarCTF/README.md) |
 | **NSSCTF** | 1 | 1 | `create_function` 代码注入（= `eval`） | [NSSCTF/](./NSSCTF/README.md) |
@@ -17,6 +17,9 @@
 
 | 赛事 | 题目 | 日期 | 考点 | flag | 状态 |
 |---|---|---|---|---|---|
+| 极客大挑战 2024 | [rce_me](./极客大挑战SYC/2024-rce_me.md) | 10-06 | 四层绕过（嵌套 if 短路 / 魔术哈希 + 参数名怪癖 / 科学计数法 / 正则不对称）+ `$$key` 覆盖 eval | `SYC{51915273-…}` | 已完成 |
+| 极客大挑战 2024 | [perfect-waf](./极客大挑战SYC/2024-perfect-waf.md) | 10-06 | 文件上传：WAF 只查 POST `name` 且只拦 `.php` 结尾 → 双后缀 `.jpg.php` | `SYC{f9639a69-…}` | 已完成 |
+| 极客大挑战 2024 | [circle](./极客大挑战SYC/2024-circle.md) | 10-06 | 内联 `<script>` 里的 `atob` + base64（`js/` 目录全是幌子） | `SYC{5UcH_@_Wo0d3rfUl_CiRc1e}` | 已完成 |
 | 极客大挑战 2025 | popself | 10-04 | 6 跳 POP 链 + 双 md5 魔术哈希 + `?24[SYC.zip=` 参数名绕过 | `SYC{Round_And_r0und_LMAO}` | 已完成 |
 | 极客大挑战 2024 | [ez_http](./极客大挑战SYC/2024-ez_http.md) | 10-04 | 六级链 + JWT HS256 伪造（改 hasFlag + 重签） | `SYC{...}`（每实例随机） | 已完成 |
 | 极客大挑战 2023 | [unsign](./极客大挑战SYC/2023-unsign.md) | 10-04 | 3 跳 POP 链（`syc`/`lover`/`web`）+ `echo` 断点调试 | 未记录 |  |

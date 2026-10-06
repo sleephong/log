@@ -57,6 +57,7 @@ writeups/
 | [2026-10-02](./logs/2026-10-02.md) | 反序列化深挖（逃逸 / 引用 / create_function）+ 0xGame 三题（含白名单命令执行） | `反序列化` `引用` `RCE` `通配符` |
 | [2026-10-03](./logs/2026-10-03.md) | PolarCTF：swp（PCRE 回溯上限绕过 `preg_match`）+ seek flag（三段式信息收集 / Cookie 越权） | `正则绕过` `信息收集` `Cookie越权` |
 | [2026-10-04](./logs/2026-10-04.md) | **极客大挑战三届连做**：2025 `popself`（6 跳链 + 双 md5 魔术哈希）<br>2023 `unsign`（3 跳链 + `echo` 断点法）<br>2024 `ez_http`（六级链 + JWT HS256 伪造） | `反序列化` `POP链` `JWT` `魔术哈希` |
+| [2026-10-06](./logs/2026-10-06.md) | 极客大挑战三道新题：`circle`（内联脚本 `atob` + base64）<br>`perfect-waf`（文件上传双后缀绕 WAF）<br>`rce_me`（四层绕过 + PHP 参数名解析怪癖） | `前端源码` `base64` `文件上传` `WAF绕过` `代码审计` `魔术哈希` |
 
 ## 总笔记（此前学习汇总）
 
@@ -85,7 +86,7 @@ writeups/
 
 | 赛事 | 进度 | 目录 |
 |---|---|---|
-| **极客大挑战（SYC）** | 2023 `unsign` / 2024 `ez_http` / 2025 `popself` | [writeups/极客大挑战SYC/](./writeups/极客大挑战SYC/README.md) |
+| **极客大挑战（SYC）** | 2023 `unsign` / 2024 `ez_http`·`perfect-waf`·`circle`·`rce_me` / 2025 `popself` | [writeups/极客大挑战SYC/](./writeups/极客大挑战SYC/README.md) |
 | **0xGame** | 字符白名单命令执行 / 奶蛙的博客 / ATP 平台 / `picture`·`signin` 待补 | [writeups/0xGame/](./writeups/0xGame/README.md) |
 | **PolarCTF** | `swp` / `seek flag` | [writeups/PolarCTF/](./writeups/PolarCTF/README.md) |
 | **NSSCTF** | `Rc3_function` | [writeups/NSSCTF/](./writeups/NSSCTF/README.md) |
@@ -108,6 +109,9 @@ writeups/
 | 极客大挑战 2025 | popself | 6 跳 POP 链 + 双 md5 魔术哈希 | 无 WP（只有日志记录） |
 | 极客大挑战 2024 | ez_http | **JWT HS256 伪造 + IP 头枚举 + 分层诊断法** | [2024-ez_http.md](./writeups/极客大挑战SYC/2024-ez_http.md) |
 | 极客大挑战 2023 | unsign | 3 跳 POP 链 + `echo` 断点调试 | [2023-unsign.md](./writeups/极客大挑战SYC/2023-unsign.md) |
+| 极客大挑战 2024 | perfect-waf | **文件上传：双后缀 `.jpg.php` 绕 WAF（判据不一致）** | [2024-perfect-waf.md](./writeups/极客大挑战SYC/2024-perfect-waf.md) |
+| 极客大挑战 2024 | circle | 内联脚本 `atob` + base64（`js/` 目录是幌子） | [2024-circle.md](./writeups/极客大挑战SYC/2024-circle.md) |
+| 极客大挑战 2024 | rce_me | **四层绕过 + PHP 参数名解析怪癖 + 魔术哈希** | [2024-rce_me.md](./writeups/极客大挑战SYC/2024-rce_me.md) |
 | 0xGame | 字符白名单命令执行 | 白名单 + glob「钓」命令与文件名 | [字符白名单命令执行.md](./writeups/0xGame/字符白名单命令执行.md) |
 | PolarCTF | swp | PCRE 回溯上限绕过 `preg_match` | 无 WP（知识点在 [10](./notes/10-信息收集与代码审计.md)、[11](./notes/11-知识总结.md)） |
 | PolarCTF | seek flag | 三段式信息收集 + Cookie 越权 | [seek-flag.md](./writeups/PolarCTF/seek-flag.md) |
