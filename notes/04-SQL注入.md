@@ -227,9 +227,7 @@ select * from users      -- 解析成 <默认库>.users（sqli-labs 里默认库
 select * from `otherdb`.`sometable`
 ```
 
-> 本题的挑战表名/列名是**每次 reset 随机**的，所以必须先查 `information_schema` 再读值 —— 顺序不能反。
-
-## 6.6 其他判据
+## 6.6 常数条件的陷阱
 
 - **`is_numeric(intval($x))` 恒真**，别拿它当过滤
 - **`count(username)=13`** 这类常数条件会被 MySQL 折叠，可能 0 秒返回 —— 要验证「条件被求值几次」就用带 `id=` 的锚定写法
