@@ -58,7 +58,7 @@ writeups/
 | [2026-10-03](./logs/2026-10-03.md) | PolarCTF：swp（PCRE 回溯上限绕过 `preg_match`）+ seek flag（三段式信息收集 / Cookie 越权） | `正则绕过` `信息收集` `Cookie越权` |
 | [2026-10-04](./logs/2026-10-04.md) | **极客大挑战三届连做**：2025 `popself`（6 跳链 + 双 md5 魔术哈希）<br>2023 `unsign`（3 跳链 + `echo` 断点法）<br>2024 `ez_http`（六级链 + JWT HS256 伪造） | `反序列化` `POP链` `JWT` `魔术哈希` |
 | [2026-10-06](./logs/2026-10-06.md) | 极客大挑战三道新题：`circle`（内联脚本 `atob` + base64）<br>`perfect-waf`（文件上传双后缀绕 WAF）<br>`rce_me`（四层绕过 + PHP 参数名解析怪癖） | `前端源码` `base64` `文件上传` `WAF绕过` `代码审计` `魔术哈希` |
-| [2026-10-07](./logs/2026-10-07.md) | 0xGame 投票题（业务逻辑判重绕过 + 接口枚举）<br>sqli-labs Less-15 / Less-9 / Less-54（布尔盲注 / 时间盲注 / `information_schema` 跨库） | `业务逻辑` `接口枚举` `SQL注入` `盲注` `information_schema` |
+| [2026-10-07](./logs/2026-10-07.md) | 0xGame 投票题（业务逻辑判重绕过 + 接口枚举）<br>sqli-labs Less-15 / Less-9（布尔盲注 / 时间盲注） | `业务逻辑` `接口枚举` `SQL注入` `盲注` |
 
 ## 总笔记（此前学习汇总）
 
@@ -99,7 +99,7 @@ writeups/
 | unserialize-lab | un1~un9 / un10 / un11 搁置 |
 | upload-labs | Pass-01~21 |
 | lfi-labs | LFI-1~14 + CMD-1~6 |
-| sqli-labs | Less-1~21 / Less-54（challenges 第 1 关：跨库读 `challenges.<随机表>`） |
+| sqli-labs | Less-1~21 |
 
 ### WP 文档
 

