@@ -35,6 +35,95 @@ res.history         # 重定向历史
 
 **抓 flag 常看 `res.headers`**（后端把 flag 放响应头）。
 
+### 2.1 Response 对象 ≠ dict
+
+这是最常踩的一脚。`res` 是 requests 的**响应对象**，不是字典：
+
+```python
+r = S.post(url, data={"vid": 7})
+r["data"]                # TypeError: 'Response' object is not subscriptable
+r = S.post(url, data={"vid": 7}).json()   # 解析后才变成 dict，才能下标
+```
+
+| 写法 | 类型 | 能不能 `r["x"]` |
+|---|---|---|
+| `r = S.post(...)` | `Response` | 不能 |
+| `r = S.post(...).json()` | `dict` | 能 |
+
+### 2.2 不知道 flag 在哪一层：先打印，再定位
+
+**不要凭感觉写 `r["data"]["flag"]`。** 顺序永远是「先打印 → 再定位 → 最后才写死路径」：
+
+```python
+r = S.post(url, data={...})
+
+print(r.status_code)         # 第 1 步：通不通
+print(r.text)                # 第 2 步：看生肉（原始 JSON 字符串）
+j = r.json()                 # 第 3 步：解析
+print(type(j))               # 第 4 步：是 dict 还是 list
+print(list(j.keys()))        # 第 5 步：顶层有哪些 key
+print(list(j["data"].keys()))    # 第 6 步：逐层往下钻
+```
+
+真实例子（0xGame 投票题）：
+
+```
+r.text  → {"ok": true, "data": {"votes": 310, "name": "永雏塔菲", "flag": "MHhH..."}}
+j.keys()            → ['ok', 'data']
+j["data"].keys()    → ['votes', 'name', 'flag']
+j["data"]["flag"]   → 'MHhHYW1le3YwdGVfNF90YWYzaV9UaGFuazVfbWlAb30='
+```
+
+**递归走一遍**（不想一层层钻时）：
+
+```python
+def walk(o, path="r"):
+    if isinstance(o, dict):
+        for k, v in o.items(): walk(v, path + "[" + repr(k) + "]")
+    elif isinstance(o, list):
+        for i, v in enumerate(o): walk(v, path + "[" + str(i) + "]")
+    else:
+        print(path, "=", repr(o))       # 叶子：真正能取到值的路径
+
+walk(j)
+# r['ok'] = True
+# r['data']['votes'] = 310
+# r['data']['flag'] = 'MHhH...'
+```
+
+**模糊捞**（连 key 名都不知道时，按「长得像 flag」筛）：
+
+```python
+def hunt(o, path="r"):
+    if isinstance(o, dict):
+        for k, v in o.items(): hunt(v, path + "." + k)
+    elif isinstance(o, list):
+        for i, v in enumerate(o): hunt(v, path + "[" + str(i) + "]")
+    elif isinstance(o, str) and len(o) > 16 and " " not in o:
+        print("可疑:", path, "=", repr(o))
+```
+
+**防崩写法**：确认结构后，正式脚本仍用 `.get()` 兜一手：
+
+```python
+if j.get("ok"):
+    print(base64.b64decode(j["data"]["flag"]).decode())
+```
+
+### 2.3 为什么一堆 flag 要 `b64decode`
+
+不是规定，是**打印出来看出来的**：`flag` 字段的值以 `MHhH` 开头、以 `=` 结尾 —— 那是 base64 的形状。`b64encode` / `b64decode` 互为逆运算：
+
+```python
+import base64
+base64.b64encode(b"0xGame{abc}")        # b'MHhHYW1le2FiY30='
+base64.b64decode("MHhHYW1le2FiY30=")    # b'0xGame{abc}'
+```
+
+`b64decode` 返回 **bytes**，要 `.decode()` 才成字符串。
+
+> 前缀速查：`0xGame{` → `MHhHYW1l`、`flag{` → `ZmxhZ`、`SYC{` → `U1lD`
+
 ## 三、JSON ↔ Python
 
 ```python
@@ -54,7 +143,7 @@ res.json()                          # 自动解析
 | `body: new URLSearchParams({...})` | `data={...}` |
 | `body: new FormData()` | `files={...}` |
 
-## 四、字符串格式化
+## 五、字符串格式化
 
 ```python
 name = "小明"
@@ -63,7 +152,7 @@ f"姓名：{name}"                    # f-string
 "姓名：{}".format(name)            # format
 ```
 
-## 五、基础语法易错
+## 六、基础语法易错
 
 | 点 | 说明 |
 |---|---|
@@ -74,7 +163,7 @@ f"姓名：{name}"                    # f-string
 | **真值** | `0`、`""`、`[]`、`{}`、`None` 都是 **False** |
 | **类型** | `"123" + 1` 报错，要 `int("123") + 1` |
 
-## 六、盲注脚本模板
+## 七、盲注脚本模板
 
 ```python
 import requests

