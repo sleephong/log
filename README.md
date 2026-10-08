@@ -59,6 +59,7 @@ writeups/
 | [2026-10-04](./logs/2026-10-04.md) | **极客大挑战三届连做**：2025 `popself`（6 跳链 + 双 md5 魔术哈希）<br>2023 `unsign`（3 跳链 + `echo` 断点法）<br>2024 `ez_http`（六级链 + JWT HS256 伪造） | `反序列化` `POP链` `JWT` `魔术哈希` |
 | [2026-10-06](./logs/2026-10-06.md) | 极客大挑战三道新题：`circle`（内联脚本 `atob` + base64）<br>`perfect-waf`（文件上传双后缀绕 WAF）<br>`rce_me`（四层绕过 + PHP 参数名解析怪癖） | `前端源码` `base64` `文件上传` `WAF绕过` `代码审计` `魔术哈希` |
 | [2026-10-07](./logs/2026-10-07.md) | 0xGame 投票题（业务逻辑判重绕过 + 接口枚举）<br>sqli-labs Less-15 / Less-9（布尔盲注 / 时间盲注） | `业务逻辑` `接口枚举` `SQL注入` `盲注` |
+| [2026-10-08](./logs/2026-10-08.md) | task8 Part 1：Python 面向对象模型做到 B4（`__globals__` 两级取 `os` / 绑定方法与 `__init__` 的坑） | `Python对象模型` `SSTI` `__globals__` |
 
 ## 总笔记（此前学习汇总）
 
@@ -80,6 +81,7 @@ writeups/
 | 12 | [注释当空格与命令绕过](./notes/12-注释当空格与命令绕过.md) | 实战（PHP 5.4 / bash 实测） |
 | 13 | [代理 IP 头 XFF 与 X-Real-IP](./notes/13-代理IP头XFF与X-Real-IP.md) | 实战（geekchallenge2024） |
 | 14 | [JWT 伪造](./notes/14-JWT伪造.md) | 实战（geekchallenge2024） |
+| 15 | [Python 面向对象模型与 SSTI 利用链基础](./notes/15-Python面向对象模型.md) | task8 Part 1 |
 
 ## 赛事 / 靶场进度
 
@@ -136,6 +138,7 @@ writeups/
 | SSRF | 已完成 |
 | JWT | 已完成 |
 | XXE |  |
+| Python 面向对象模型 / SSTI（task8） | 进行中（Part 1 到 B4） |
 
 ## 链接
 
