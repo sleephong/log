@@ -60,6 +60,7 @@ writeups/
 | [2026-10-06](./logs/2026-10-06.md) | 极客大挑战三道新题：`circle`（内联脚本 `atob` + base64）<br>`perfect-waf`（文件上传双后缀绕 WAF）<br>`rce_me`（四层绕过 + PHP 参数名解析怪癖） | `前端源码` `base64` `文件上传` `WAF绕过` `代码审计` `魔术哈希` |
 | [2026-10-07](./logs/2026-10-07.md) | 0xGame 投票题（业务逻辑判重绕过 + 接口枚举）<br>sqli-labs Less-15 / Less-9（布尔盲注 / 时间盲注） | `业务逻辑` `接口枚举` `SQL注入` `盲注` |
 | [2026-10-08](./logs/2026-10-08.md) | task8 Part 1：Python 面向对象模型做到 B4（`__globals__` 两级取 `os` / 绑定方法与 `__init__` 的坑） | `Python对象模型` `SSTI` `__globals__` |
+| [2026-10-09](./logs/2026-10-09.md) | DSH 更新后排障：侧边栏会话列表消失（插件占死 `sidebar.workspaces` 插槽）<br>插件 peer 版本区间核对 + 每日提醒改由 Windows 计划任务接管 | `排障方法` `Cordis插槽` `peerDependencies` `计划任务` |
 
 ## 总笔记（此前学习汇总）
 
