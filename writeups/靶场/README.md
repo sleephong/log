@@ -11,12 +11,14 @@
 | **upload-labs** | 文件上传 Pass-01~21 | 全通 | [05 · 文件上传](../../notes/05-文件上传.md) | 待补 |
 | **lfi-labs** | 文件包含 LFI-1~14 + 命令注入 CMD-1~6 | 全通 | [06 · 文件包含 LFI](../../notes/06-文件包含LFI.md) | 待补 |
 | **sqli-labs** | SQL 注入 Less-1~21 | 全通 | [04 · SQL 注入](../../notes/04-SQL注入.md) | 待补 |
+| **SSTILab** | Flask / Jinja2 模板注入（SSTI），13 关递进过滤 | 第 1~2 关 | 待补 | [SSTILab](./SSTILab.md) |
 
 ## 已归档的 WP
 
 | 题目 | 考点 | 文件 |
 |---|---|---|
 | **unserialize-lab · un9** | **`SoapClient::__call` SSRF + `_user_agent` 属性做 CRLF 注入抢 `Content-Type`** | [unserialize-lab-un9.md](./unserialize-lab-un9.md) |
+| **SSTILab · 第 1~2 关** | **模板注入：`{{` 子串黑名单 → 换 `{% print %}` 定界符** | [SSTILab.md](./SSTILab.md) |
 
 > un9 这篇是仓库里**最完整的一篇**（含附录 A1~A6：注入前后差异 / 首值优先 / Content-Type / 头的降级 / 二次编码 / 头大小写）。
 > 它把「协议层原理」挖到了底 —— 后来 un10 逃逸、geekchallenge 的 JWT 都从这里的方法论受益。

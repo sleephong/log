@@ -104,6 +104,7 @@ writeups/
 | upload-labs | Pass-01~21 |
 | lfi-labs | LFI-1~14 + CMD-1~6 |
 | sqli-labs | Less-1~21 |
+| SSTILab | 第 1~2 关 / 共 13 关 |
 
 ### WP 文档
 
@@ -123,6 +124,7 @@ writeups/
 | PolarCTF | seek flag | 三段式信息收集 + Cookie 越权 | [seek-flag.md](./writeups/PolarCTF/seek-flag.md) |
 | NSSCTF | Rc3_function | `create_function` 代码注入 | [Rc3_function.md](./writeups/NSSCTF/Rc3_function.md) |
 | unserialize-lab | un9 | **SoapClient SSRF + CRLF 注入** | [unserialize-lab-un9.md](./writeups/靶场/unserialize-lab-un9.md) |
+| SSTILab | 第 1~2 关 | **`{{` 黑名单 → `{% print %}`** | [SSTILab.md](./writeups/靶场/SSTILab.md) |
 
 ## 学习路线
 
