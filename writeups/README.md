@@ -12,7 +12,7 @@
 | **PolarCTF** | 2 | 2 | PCRE 回溯上限绕过 `preg_match`、三段式信息收集、Cookie 越权 | [PolarCTF/](./PolarCTF/README.md) |
 | **NSSCTF** | 1 | 1 | `create_function` 代码注入（= `eval`） | [NSSCTF/](./NSSCTF/README.md) |
 | **靶场**（非赛事） | 4 个平台 | — | un9 那篇是最完整的（含附录 A1~A6） | [靶场/](./靶场/README.md) |
-| **靶场**（非赛事） | 5 个平台 | — | un9 那篇是最完整的（含附录 A1~A6）；SSTILab 在做第 1~2 关 | [靶场/](./靶场/README.md) |
+| **靶场**（非赛事） | 5 个平台 | — | un9 那篇是最完整的（含附录 A1~A6）；SSTILab 已 13 关全通 | [靶场/](./靶场/README.md) |
 
 ## 全部题目
 
@@ -32,7 +32,7 @@
 | PolarCTF | [seek flag](./PolarCTF/seek-flag.md) | 10-03 | 三段式信息收集 + Cookie 越权 | `flag{7ac5b3ca87…}` | 已完成 |
 | NSSCTF | [Rc3_function](./NSSCTF/Rc3_function.md) | 10-02 | `create_function` 代码注入 | 未记录 | 已完成 |
 | unserialize-lab | [un9](./靶场/unserialize-lab-un9.md) | 09-30 →10-01 | `SoapClient::__call` SSRF + CRLF 抢 `Content-Type` | — | 已完成 |
-| SSTILab | [第 1~2 关](./靶场/SSTILab.md) | 10-11 | 模板注入：`{{` 黑名单 → `{% print %}` 绕过 | `SSTILAB{enjoy_flask_ssti}` | 第 1~2 关 |
+| SSTILab | [13 关全通](./靶场/SSTILab.md) | 10-11 →10-12 | 模板注入 13 关递进过滤（盲注、禁 `{{`/引号/下划线/点号/数字/关键词） | `SSTILAB{enjoy_flask_ssti}` | 13 关全通 |
 
 ## 两条记录约定
 
