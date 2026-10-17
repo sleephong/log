@@ -31,6 +31,7 @@
 | 14 | [JWT 伪造](./14-JWT伪造.md) | 实战（geekchallenge2024） |
 | 15 | [Python 面向对象模型与 SSTI 利用链基础](./15-Python面向对象模型.md) | task8 Part 1 |
 | 16 | [curl 用法](./16-curl用法.md) | task8 靶场实操 |
+| 17 | [信息泄露漏洞](./17-信息泄露漏洞.md) | task9 |
 
 ## 说明
 
