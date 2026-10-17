@@ -91,7 +91,7 @@ include("includes/" . $x . ".php")
 → 路径变成 includes/../../../../etc/passwd\0.php
 → \0 后内容被丢弃 → 实际读 /etc/passwd
 ```
-需 PHP < 5.3.4 + Unix（Windows 文件 API 不支持；新版 PHP 已修复）。
+需 PHP < 5.3.4，与系统无关（实测 Windows + 5.2.17 的 include 截断成功；5.3.4 起已修复）。
 
 ② `....//` 绕 `str_replace('../','')`
 ```
@@ -149,4 +149,4 @@ CMD-3~6 本机打不了：环境没装 whois，固定前缀失败 → 命令中�
 
 # 八、一句话
 
-> include 执行、file_get_contents 只读。`php://filter/read=convert.base64-encode/resource=xxx` 读源码。`....//` 绕 `str_replace('../')`。`%00` 截断需旧版 PHP+Unix。命令注入用 `;`（Unix）/ `&`（Windows）断开前缀。
+> include 执行、file_get_contents 只读。`php://filter/read=convert.base64-encode/resource=xxx` 读源码。`....//` 绕 `str_replace('../')`。`%00` 截断需旧版 PHP（< 5.3.4，与系统无关）。命令注入用 `;`（Unix）/ `&`（Windows）断开前缀。
