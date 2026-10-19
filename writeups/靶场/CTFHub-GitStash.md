@@ -335,3 +335,201 @@ git show 'stash@{0}:24766100228235.txt'
 ```
 
 **flag：`ctfhub{03f0f3f844084d7134cedad3}`**
+
+---
+
+## 八、附录（续）：命令细节
+
+> 以下全部在实例 `challenge-f51176e4` 上实测。
+
+### A5. `-p` 是什么：`--patch`，而默认是 `--stat`
+
+```
+git stash show -p
+└─┬─┘ └─┬─┘ └┬┘ └┬┘
+  │     │    │   └─ -p = --patch（输出补丁 = diff）
+  │     │    └─ show = 显示某个 stash 条目
+  │     └─ stash = 子命令组
+  └─ git
+```
+
+**实测 md5：**
+
+```
+git stash show -p          deada998...
+git stash show --patch     deada998...   ✅ 完全相同（-p 就是 --patch）
+
+git stash show             a0309894...
+git stash show --stat      a0309894...   ✅ 完全相同（默认就是 --stat）
+
+-p 和默认一样吗:  ❌ 不一样
+```
+
+| 命令 | 输出 | 行数 |
+|---|---|---|
+| `git stash show` | `30172337317370.txt \| 2 +-` | 2 |
+| **`git stash show -p`** | **完整 diff** | 7 |
+| `git stash show --name-only` | `30172337317370.txt` | 1 |
+
+**`-p` 是 git 通用旗标：** `log -p` / `show -p` / `diff -p` / `stash show -p` 都是"patch 格式"。
+**例外：`git add -p` 的 `-p` 是 interactive（分块暂存），完全不同。**
+
+### A6. 怎么拿到文件名（6 种方式）
+
+**文件名是随机生成的**（本例 `30172337317370.txt`，14 位数字），猜不到，必须查。
+
+```bash
+# ① 最常用：--stat 统计
+git stash show
+#  30172337317370.txt | 2 +-
+
+# ② 只要名字
+git stash show --name-only
+#  30172337317370.txt
+
+# ③ stash 里的【全部】文件 + blob 哈希
+git ls-tree -r 'stash@{0}'
+#  100644 blob dc31ae63...  30172337317370.txt
+#  100644 blob 9071e0a2...  50x.html
+#  100644 blob 2c59e302...  index.html
+
+# ④ 全部文件名
+git ls-tree -r --name-only 'stash@{0}'
+
+# ⑤ 显式指定和哪个父比
+git diff --name-only 'stash@{0}^1' 'stash@{0}'
+
+# ⑥ 从 diff 头里抠
+git stash show -p | grep '^diff --git'
+```
+
+**② 和 ③ 的关键区别：**
+
+| 命令 | 本例数量 | 含义 |
+|---|---|---|
+| `git stash show --name-only` | **1 个** | **只有改动的**文件 |
+| `git ls-tree -r --name-only` | **3 个** | stash 里**全部**文件（含没改的） |
+
+**一行搞定：**
+
+```bash
+git show "stash@{0}:$(git stash show --name-only | head -1)"
+# → ctfhub{053da77b26b117ed9a380b03}
+```
+
+### A7. 五种 diff 形态实测（含一处更正）
+
+**同一实例，用 `grep 'ctfhub{'` 数命中：**
+
+| 命令 | 命中 | 说明 |
+|---|---|---|
+| `git log --all -p` | **0** ❌ | **对 merge 完全不输出** |
+| `git log --all -p -m` | 2 ✅ | 每个父一份普通 diff |
+| `git log --all -p -c` | 1 ✅ | combined diff |
+| `git log --all -p --cc` | 1 ✅ | combined diff 精简版 |
+| `git show 'stash@{0}'` | 1 ✅ | **默认就是 combined diff** |
+| `git show -m 'stash@{0}'` | 2 ✅ | 每个父一份 |
+| `git stash show -p` | 1 ✅ | 普通 diff（相对 parent 1） |
+| `git show 'stash@{0}:<文件>'` | 1 ✅ | **原文，不是 diff** |
+
+> **更正**：本文早期版本写"`--cc` 也出不来（0 行）"是**错的** —— 那是 grep 正则 `^[+-][^+-]` 把 `++` 前缀排除了造成的测量假象。`--cc` 是能出的。
+
+**行前缀差异（`cat -A` 的 `$` 是行尾）：**
+
+```
+git log -p -m        → +ctfhub{...}$        ← 1 个 +
+git show stash@{0}   → ++ctfhub{...}$       ← ★ 2 个 +
+git stash show -p    → +ctfhub{...}$        ← 1 个 +
+```
+
+**combined diff 的正号是 `++`、负号是 `--`**（按"相对每个父"分列标）。
+
+**所以扫 flag 时正则别写太窄：**
+
+| grep 写法 | combined diff 能命中吗 |
+|---|---|
+| `grep ctfhub` | ✅ |
+| `grep '^+'` | ✅（`++` 也以 `+` 开头） |
+| **`grep '^+ctfhub'`** | ❌ **漏**（实际是 `++ctfhub`） |
+| `grep '^[+-][^+-]'` | ❌ **漏** |
+
+### A8. `stash@{0}` 和裸 `@{0}` 是两回事
+
+**实测：**
+
+```
+stash@{0}    → 636c1f32...   ← stash 本体
+refs/stash   → 636c1f32...   ← 同一个
+@{0}         → a7aecb50...   ← ★ HEAD 的 reflog 第 0 条（不是 stash！）
+stash@{0}^1  → 805a403a...   ← stash 的 parent 1
+```
+
+| 写法 | 含义 |
+|---|---|
+| `@{0}` | **HEAD** 的 reflog 第 0 条（= 当前 HEAD） |
+| `stash@{0}` | **refs/stash** 的 reflog 第 0 条（= 最新 stash） |
+
+**多个 stash 时：`stash@{0}` 最新，`stash@{1}` 上一个，以此类推。**
+
+### A9. `<rev>:<path>` vs `<rev> -- <path>`
+
+| 写法 | 输出 |
+|---|---|
+| `git show 'stash@{0}:30172337317370.txt'` | **文件原文** |
+| `git show 'stash@{0}' -- 30172337317370.txt` | 该文件的 **diff** |
+
+**冒号是"取内容"，`--` 是"过滤 diff"。**
+
+**path 规则：**
+
+| 写法 | 说明 |
+|---|---|
+| `HEAD:index.html` | 仓库**根目录**下 |
+| `HEAD:dir/file.txt` | 子目录用 `/` |
+| `HEAD:./file.txt` | ❌ 相对当前目录不生效 |
+| `HEAD:/file.txt` | ❌ 前导 `/` 不对 |
+
+**path 永远相对仓库根，不带 `./` 或 `/` 开头。**
+
+**等价关系：**
+
+```
+git show 'rev:path'   =  git cat-file -p <该路径的 blob>        （md5 实测相同）
+git stash show -p     =  git diff 'stash@{0}^1' 'stash@{0}'     （md5 实测相同）
+```
+
+### A10. 三层"能看到" —— 为什么 `ls` 空空如也
+
+```
+① 工作区       ls                              ← 只有 HEAD 那个版本的文件
+② index        git ls-files --stage            ← 暂存区登记的文件
+③ 对象库       git cat-file --batch-all-objects ← 所有对象（最全）
+```
+
+**GitHack 只做了两件事：**
+
+| 做了 | 没做 |
+|---|---|
+| ✅ 把对象下载到 `.git/objects/` | ❌ 不会把 stash 内容 checkout 出来 |
+| ✅ `git reset --hard HEAD` 摆出工作区 | ❌ 不会告诉你 flag 在哪 |
+
+**所以 `ls` 只看得到 ① 层；flag 在第 ③ 层。**
+
+**万能兜底（不管 flag 藏在 commit / stash / index / 悬空对象）：**
+
+```bash
+git cat-file --batch-all-objects --batch-check='%(objecttype) %(objectname)' \
+  | awk '$1=="blob"{print $2}' \
+  | while read -r h; do
+      out=$(git cat-file -p "$h" 2>/dev/null | grep -oE '(ctfhub|flag)\{[^}]*\}' | head -1)
+      [ -n "$out" ] && echo "★ blob $h → $out"
+    done
+```
+
+**实测输出：**
+
+```
+★ dc31ae6371311d988bdcef03c885f2c8ed0ba1ff → ctfhub{053da77b26b117ed9a380b03}
+```
+
+**`git fsck --unreachable` 找不到 index 里的 blob** —— 因为 index 也算"引用"，被它指向的对象是"可达"的。
