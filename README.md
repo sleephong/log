@@ -64,6 +64,7 @@ writeups/
 | [2026-10-06](./logs/2026-10-06.md) | 极客大挑战三道新题：`circle`（内联脚本 `atob` + base64）<br>`perfect-waf`（文件上传双后缀绕 WAF）<br>`rce_me`（四层绕过 + PHP 参数名解析怪癖） | `前端源码` `base64` `文件上传` `WAF绕过` `代码审计` `魔术哈希` |
 | [2026-10-07](./logs/2026-10-07.md) | 0xGame 投票题（业务逻辑判重绕过 + 接口枚举）<br>sqli-labs Less-15 / Less-9（布尔盲注 / 时间盲注） | `业务逻辑` `接口枚举` `SQL注入` `盲注` |
 | [2026-10-08](./logs/2026-10-08.md) | task8 Part 1：Python 面向对象模型做到 B4（`__globals__` 两级取 `os` / 绑定方法与 `__init__` 的坑） | `Python对象模型` `SSTI` `__globals__` |
+| [2026-10-20](./logs/2026-10-20.md) | 极客大挑战 `klf`：**盲 SSTI**（输出被丢弃 → `abort(404, description=)` 造回显）+ 四道 C 语言题 | `SSTI` `盲注` `回显通道` `C语言` |
 
 ## 总笔记（此前学习汇总）
 
@@ -93,7 +94,7 @@ writeups/
 
 | 赛事 | 进度 | 目录 |
 |---|---|---|
-| **极客大挑战（SYC）** | 2023 `unsign` / 2024 `ez_http`·`perfect-waf`·`circle`·`rce_me` / 2025 `popself` | [writeups/极客大挑战SYC/](./writeups/极客大挑战SYC/README.md) |
+| **极客大挑战（SYC）** | 2023 `unsign` / 2024 `ez_http`·`perfect-waf`·`circle`·`rce_me` / 2025 `popself` / 届未确认 `klf` | [writeups/极客大挑战SYC/](./writeups/极客大挑战SYC/README.md) |
 | **0xGame** | 字符白名单命令执行 / 奶蛙的博客 / ATP 平台 / 关注塔菲谢谢喵（投票） / `picture`·`signin` 待补 | [writeups/0xGame/](./writeups/0xGame/README.md) |
 | **PolarCTF** | `swp` / `seek flag` | [writeups/PolarCTF/](./writeups/PolarCTF/README.md) |
 | **NSSCTF** | `Rc3_function` | [writeups/NSSCTF/](./writeups/NSSCTF/README.md) |
@@ -120,6 +121,7 @@ writeups/
 | 极客大挑战 2024 | perfect-waf | **文件上传：双后缀 `.jpg.php` 绕 WAF（判据不一致）** | [2024-perfect-waf.md](./writeups/极客大挑战SYC/2024-perfect-waf.md) |
 | 极客大挑战 2024 | circle | 内联脚本 `atob` + base64（`js/` 目录是幌子） | [2024-circle.md](./writeups/极客大挑战SYC/2024-circle.md) |
 | 极客大挑战 2024 | rce_me | **四层绕过 + PHP 参数名解析怪癖 + 魔术哈希** | [2024-rce_me.md](./writeups/极客大挑战SYC/2024-rce_me.md) |
+| 极客大挑战（届未确认） | klf | **盲 SSTI：结果被丢弃 → `abort(404, description=)` 造回显** | [klf-ssti.md](./writeups/极客大挑战SYC/klf-ssti.md) |
 | 0xGame | 字符白名单命令执行 | 白名单 + glob「钓」命令与文件名 | [字符白名单命令执行.md](./writeups/0xGame/字符白名单命令执行.md) |
 | 0xGame | 关注塔菲谢谢喵（投票） | **业务逻辑：判重只认 `sid`、`voter` 白送** + 接口枚举 | [关注塔菲谢谢喵.md](./writeups/0xGame/关注塔菲谢谢喵.md) |
 | PolarCTF | swp | PCRE 回溯上限绕过 `preg_match` | 无 WP（知识点在 [10](./notes/10-信息收集与代码审计.md)、[11](./notes/11-知识总结.md)） |

