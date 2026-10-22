@@ -65,6 +65,7 @@ writeups/
 | [2026-10-07](./logs/2026-10-07.md) | 0xGame 投票题（业务逻辑判重绕过 + 接口枚举）<br>sqli-labs Less-15 / Less-9（布尔盲注 / 时间盲注） | `业务逻辑` `接口枚举` `SQL注入` `盲注` |
 | [2026-10-08](./logs/2026-10-08.md) | task8 Part 1：Python 面向对象模型做到 B4（`__globals__` 两级取 `os` / 绑定方法与 `__init__` 的坑） | `Python对象模型` `SSTI` `__globals__` |
 | [2026-10-20](./logs/2026-10-20.md) | 极客大挑战 `klf`：**盲 SSTI**（输出被丢弃 → `abort(404, description=)` 造回显）+ 四道 C 语言题 | `SSTI` `盲注` `回显通道` `C语言` |
+| [2026-10-22](./logs/2026-10-22.md) | 复习 SQL 注入：SQLite 沙盘走完整链路（只禁空格 → 括号顶替 → 爆表名/列名/secret） | `SQL注入` `SQLite` `布尔盲注` `空格绕过` |
 
 ## 总笔记（此前学习汇总）
 
@@ -87,6 +88,12 @@ writeups/
 | 13 | [代理 IP 头 XFF 与 X-Real-IP](./notes/13-代理IP头XFF与X-Real-IP.md) | 实战（geekchallenge2024） |
 | 14 | [JWT 伪造](./notes/14-JWT伪造.md) | 实战（geekchallenge2024） |
 | 15 | [Python 面向对象模型与 SSTI 利用链基础](./notes/15-Python面向对象模型.md) | task8 Part 1 |
+| 16 | [curl 用法](./notes/16-curl用法.md) | task8 靶场实操 |
+| 17 | [信息泄露漏洞](./notes/17-信息泄露漏洞.md) | task9 |
+| 18 | [做题常见疑问](./notes/18-做题常见疑问.md) | 问答集（2026-10-17~20） |
+| 19 | [C 语言基础](./notes/19-C语言基础.md) | PTA 刷题（2026-10-20 起） |
+| 20 | [信息泄露作业答案](./notes/20-信息泄露作业答案.md) | task9 作业（5 问） |
+| 21 | [PHP 命令执行与绕过](./notes/21-PHP命令执行与绕过.md) | task10 |
 
 ## 赛事 / 靶场进度
 
@@ -145,8 +152,11 @@ writeups/
 | 信息收集 / 代码审计 | 已完成 |
 | SSRF | 已完成 |
 | JWT | 已完成 |
-| XXE |  |
-| Python 面向对象模型 / SSTI（task8） | 进行中（Part 1 到 B4） |
+| XXE | 已完成（纸上谈兵实战） |
+| Python 面向对象模型 / SSTI（task8） | 已完成（Part 1~4，SSTILab 13/13） |
+| 信息泄露（task9） | 已完成（备份 4/4、Git Log 已通，Stash / Index 待补） |
+| 命令执行与绕过（task10） | 已完成 |
+| Misc（misc5 五天计划） | 进行中（真题分析完毕，Day 1 环境待跑） |
 | C 语言（PTA 刷题） | 进行中（已 4 题：条件分支 / 拆位与定宽 / 打擂台与计数 / 区间分段） |
 
 ## 链接
