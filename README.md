@@ -66,6 +66,7 @@ writeups/
 | [2026-10-08](./logs/2026-10-08.md) | task8 Part 1：Python 面向对象模型做到 B4（`__globals__` 两级取 `os` / 绑定方法与 `__init__` 的坑） | `Python对象模型` `SSTI` `__globals__` |
 | [2026-10-20](./logs/2026-10-20.md) | 极客大挑战 `klf`：**盲 SSTI**（输出被丢弃 → `abort(404, description=)` 造回显）+ 四道 C 语言题 | `SSTI` `盲注` `回显通道` `C语言` |
 | [2026-10-22](./logs/2026-10-22.md) | 复习 SQL 注入：SQLite 沙盘走完整链路（只禁空格 → 括号顶替 → 爆表名/列名/secret） | `SQL注入` `SQLite` `布尔盲注` `空格绕过` |
+| [2026-10-23](./logs/2026-10-23.md) | 保卫玉米（Flask 客户端可控伤害）+ Geek_Challenge2026（PHP 反序列化 `__wakeup` 绕过） | `Flask` `反序列化` `__wakeup` |
 
 ## 总笔记（此前学习汇总）
 

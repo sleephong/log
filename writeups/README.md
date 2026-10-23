@@ -7,17 +7,21 @@
 
 | 赛事 | 题目 | 通关 | 核心考点 | 目录 |
 |---|---|---|---|---|
-| **极客大挑战（SYC）** | 7 | 7 / 0 | PHP 反序列化 POP 链（3/6 跳）、JWT HS256、IP 头枚举、文件上传双后缀、内联 JS 编码、多层代码审计绕过、盲 SSTI 回显通道 | [极客大挑战SYC/](./极客大挑战SYC/README.md) |
+| **极客大挑战（SYC）** | 9 | 8 / 1 | PHP 反序列化 POP 链（3/6 跳）、JWT HS256、IP 头枚举、文件上传双后缀、内联 JS 编码、多层代码审计绕过、盲 SSTI 回显通道、Flask 客户端可控伤害、`__wakeup` 绕过 | [极客大挑战SYC/](./极客大挑战SYC/README.md) |
 | **0xGame** | 4（+2 待补） | 4 | 字符白名单命令执行、编码链还原、客户端保护绕过、业务逻辑判重绕过 | [0xGame/](./0xGame/README.md) |
 | **PolarCTF** | 2 | 2 | PCRE 回溯上限绕过 `preg_match`、三段式信息收集、Cookie 越权 | [PolarCTF/](./PolarCTF/README.md) |
 | **NSSCTF** | 1 | 1 | `create_function` 代码注入（= `eval`） | [NSSCTF/](./NSSCTF/README.md) |
 | **靶场**（非赛事） | 4 个平台 | — | un9 那篇是最完整的（含附录 A1~A6） | [靶场/](./靶场/README.md) |
 | **靶场**（非赛事） | 5 个平台 | — | un9 那篇是最完整的（含附录 A1~A6）；SSTILab 已 13 关全通 | [靶场/](./靶场/README.md) |
 
+> 8 / 1：8 题已通关，1 题（Geek_Challenge2026）本地验证通过、未上目标。
+
 ## 全部题目
 
 | 赛事 | 题目 | 日期 | 考点 | flag | 状态 |
 |---|---|---|---|---|---|
+| 极客大挑战 2026 | [保卫玉米](./极客大挑战SYC/2026-corn-rescue.md) | 10-23 | Flask 状态机 + UA 设备校验 + `/api/fire` 信任客户端 `damage` | `SYC{Luckily_th3_c0rn_didnt_turn_int0_p0pc0rn}` | 已完成 |
+| 极客大挑战 2026 | [Geek_Challenge2026](./极客大挑战SYC/2026-geek-challenge.md) | 10-23 | 六跳 POP 链 + `__wakeup` 绕过（unserialize 失败析构）+ `admin`→`hacker` 长度注入 | 未记录（本地验证） | 本地打通 |
 | 极客大挑战 2024 | [rce_me](./极客大挑战SYC/2024-rce_me.md) | 10-06 | 四层绕过（嵌套 if 短路 / 魔术哈希 + 参数名怪癖 / 科学计数法 / 正则不对称）+ `$$key` 覆盖 eval | `SYC{51915273-…}` | 已完成 |
 | 极客大挑战（届未确认） | [klf](./极客大挑战SYC/klf-ssti.md) | 10-20 →10-21 | **盲 SSTI：`render_template_string` 结果被丢弃 → `abort(404, description=)` 造回显** + 文件系统定位 | `GEEK{24f587d3-…}` | 已完成 |
 | 极客大挑战 2024 | [perfect-waf](./极客大挑战SYC/2024-perfect-waf.md) | 10-06 | 文件上传：WAF 只查 POST `name` 且只拦 `.php` 结尾 → 双后缀 `.jpg.php` | `SYC{f9639a69-…}` | 已完成 |
