@@ -69,6 +69,7 @@ writeups/
 | [2026-10-23](./logs/2026-10-23.md) | 保卫玉米（Flask 客户端可控伤害）+ Geek_Challenge2026（PHP 反序列化 `__wakeup` 绕过） | `Flask` `反序列化` `__wakeup` |
 | [2026-10-24](./logs/2026-10-24.md) | 术之尽头（四图 → `robots.min.js` XOR → `data://` include → root 循环 `-L` 参数注入）<br>图书（第六本 `id=6`，未解出）<br>ez_pop 目标补测（属性数量绕过 `__wakeup`） | `XOR` `PHP include` `data://` `参数注入` `反序列化` |
 | [2026-10-25](./logs/2026-10-25.md) | ezphp 两关（`intval` 八进制 + `php://filter` 写入绕过）<br>术之尽头 root 循环复盘（`primary`/`marstream`/`-L`）<br>ez_pop 魔术方法链与长度注入复习 | `PHP` `intval` `php://filter` `参数注入` `反序列化` |
+| [2026-10-26](./logs/2026-10-26.md) | 丹特丽安の書架：确认布尔盲注，绕 WAF（`/*!50000select*/`、`/*!50000from*/`、`if`、HPP），枚举 schema/表/列；未出 flag<br>整理 SQLi GET/HPP 脚本，恢复 `sqlAUTO.py` 旧版 | `SQL盲注` `HPP` `WAF绕过` `MySQL` |
 
 ## 总笔记（此前学习汇总）
 
