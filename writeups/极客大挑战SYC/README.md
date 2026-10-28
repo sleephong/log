@@ -10,8 +10,9 @@
 
 | 届 | 题目 | 时间 | 考点 | flag | 状态 | WP |
 |---|---|---|---|---|---|---|
-| 2026 | 保卫玉米（CORN RESCUE） | 10-23 | Flask 状态机 + UA 设备校验 + 客户端可控伤害 | `SYC{Luckily_th3_c0rn_didnt_turn_int0_p0pc0rn}` | 已完成 | [链接](./2026-corn-rescue.md) |
-| 2026 | Geek_Challenge2026（反序列化） | 10-23 → 10-24 | 六跳 POP 链 + `O:1:"B":2:` 属性计数绕过 `__wakeup` + `admin`→`hacker` 长度注入 | `SYC{982513ca-51c1-4244-981a-15c2f921acf1}}` | 已完成 | [链接](./2026-geek-challenge.md) |
+| 2026 | 保卫玉米（CORN RESCUE） | 10-23 | Flask 状态机 + UA 设备校验 + 客户端可控伤害 | `SYC{Luckily_th3_c0rn_didnt_turn_int0_p0pc0rn}` | 已完成 | [链接](./2026/2026-corn-rescue.md) |
+| 2026 | Geek_Challenge2026（反序列化） | 10-23 → 10-24 | 六跳 POP 链 + `O:1:"B":2:` 属性计数绕过 `__wakeup` + `admin`→`hacker` 长度注入 | `SYC{982513ca-51c1-4244-981a-15c2f921acf1}}` | 已完成 | [链接](./2026/2026-geek-challenge.md) |
+| 2026 | 术之尽头 | 10-24 | `robots.min.js` XOR + `data://` include + root 循环 `-L` 参数注入 | 未记录 | 已完成 | [链接](./2026/2026-shu-zhi-jin-tou.md) |
 | 2023（十四届） | unsign | 10-04 18:14 | 三跳 POP 链 | 未记录 |  | [链接](./2023-unsign.md) |
 | 2024 | ez_http | 10-04 21:49 | 六级链 + JWT | `SYC{...}`（每实例随机） | 已完成 | [链接](./2024-ez_http.md) |
 | 2025 | popself | 10-04 15:34 | 六跳 POP 链 + 魔术哈希 | `SYC{Round_And_r0und_LMAO}` | 已完成 | 无 WP |
@@ -20,7 +21,7 @@
 | 2024 | rce_me | 10-06 | 四层绕过 + PHP 参数名解析怪癖 + 魔术哈希 | `SYC{51915273-f41c-4f4d-a187-323d6e74597c}` | 已完成 | [链接](./2024-rce_me.md) |
 | 未确认（镜像时间 2023-09） | klf | 10-20 13:34 → 次日 00:43 | **盲 SSTI：输出被丢弃 → `abort(404, description=)` 造回显** | `GEEK{24f587d3-…}`（每实例随机） | 已完成 | [链接](./klf-ssti.md) |
 
-> 2026 的两题风格完全不同：保卫玉米是 **Flask 的客户端可控参数**（不是 PHP）；Geek_Challenge2026 是 **PHP 反序列化 + `__wakeup` 绕过**。两题均已在目标完成：ez_pop 目标用 `O:1:"B":2:` 属性计数绕过（老 PHP），截断法在目标上不生效。
+> 2026 的三题风格完全不同：保卫玉米是 **Flask 的客户端可控参数**（不是 PHP）；Geek_Challenge2026 是 **PHP 反序列化 + `__wakeup` 绕过**；术之尽头是 **XOR 找入口 + `data://` include + root 循环参数注入**。三题均已在目标完成：ez_pop 目标用 `O:1:"B":2:` 属性计数绕过（老 PHP），截断法在目标上不生效。
 
 > klf 这题**flag 前缀是 `GEEK{`**，和本赛事其他题的 `SYC{...}` 不同；镜像文件时间是 2023-09，届别未确认，所以表里不写届数。
 > 它考的东西也和前面几题不同：不是过滤绕过，而是**没有回显时怎么把结果拿回来**。
