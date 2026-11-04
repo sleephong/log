@@ -74,6 +74,8 @@ writeups/
 | [2026-10-28](./logs/2026-10-28.md) | week1 五题整理成稿；术之尽头 WP 入库、2026 三篇归入 `2026/`<br>书架盲注脚本定稿：二分加相等回退、上界 126、加 timeout、抽出通用版 | `WP整理` `盲注脚本` `二分边界` `极客2026` |
 | [2026-10-29](./logs/2026-10-29.md) | Misc：8 张图两两异或（白占比 + 结构度排序）解出 flag，工具化 `xor_pairs.py`<br>补 task 知识点清单/详解、Misc 知识点大纲；晚上第一次面试 | `Misc` `图片异或` `工具化` `面试` |
 | [2026-10-30](./logs/2026-10-30.md) | 新生赛 Upload：`.htaccess` 反斜杠续行绕 WAF，`AddType` 让 png 当 PHP，`auto_prepend_file` + `php://filter` 解码 `a.b64` 执行；flag 待补 | `文件上传` `WAF绕过` `.htaccess` `auto_prepend_file` |
+| [2026-10-31](./logs/2026-10-31.md) | Misc 三题：音频 LSB、频谱图二维码、模糊截图二维码（网格重建 + RS 纠错）<br>工具化 `audio_scan.py`、`qr_fix.py`、`qr_auto_decode.py`、`QR-Decoder.exe` | `Misc` `音频隐写` `LSB` `二维码` `纠错` `工具化` |
+| [2026-11-04](./logs/2026-11-04.md) | 二面冲刺材料（三天方案 + 636 行复习资料 → PDF）<br>SQL 专项实验：自搭探针跑通探测九步、复现二次注入、`if` 替代 `where`、`or` 与 `union` 的边界 | `SQL注入` `二次注入` `探测流程` `二面备考` |
 
 ## 总笔记（此前学习汇总）
 
