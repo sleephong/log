@@ -80,6 +80,7 @@ writeups/
 | [2026-11-06](./logs/2026-11-06.md) | 文件包含错题本：13 题 32 分，追问与链题均暴露「会零件不会拼装」<br>双写绕过实测（`pphphp` 可用、`phpphp` 失效）；整理利用链四步与选路表 | `文件包含` `双写绕过` `利用链` `错题本` |
 | [2026-11-07](./logs/2026-11-07.md) | 自搭 LFI 演示站，三条链实测跑通：日志包含（UA 写马）、session 包含、过滤后改走图片马<br>拆解 HTTP 请求行与服务端五步处理；记录 PowerShell 插值与转义四个坑 | `文件包含` `日志包含` `session包含` `利用链` |
 | [2026-11-08](./logs/2026-11-08.md) | 接阶段一 SSRF 任务：按清单重写学习笔记（九节）、附已核验文章<br>搭双端口靶场，八条演示跑通：打本机后台、`file://` 读站点外文件、三种 IP 变形绕黑名单、端口探测 | `SSRF` `file协议` `IP变形` `靶场搭建` |
+| [2026-11-09](./logs/2026-11-09.md) | Docker 部署 hello-ssrf 并十关通关：`file://` → `dict://` 探端口 → gopher 发 HTTP → 抓包看 MySQL 握手 → UDF 提权 → Redis 写 shell → FastCGI RCE<br>SQL：`LIMIT 0,1` 的后果、Less-1 与 Less-2 注释差异、LIMIT 压掉时间盲注延迟（0.39s vs 12.37s） | `SSRF` `gopher` `Redis` `MySQL提权` `FastCGI` `SQL注入` |
 
 ## 总笔记（此前学习汇总）
 
