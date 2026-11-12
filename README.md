@@ -83,6 +83,7 @@ writeups/
 | [2026-11-09](./logs/2026-11-09.md) | Docker 部署 hello-ssrf 并十关通关：`file://` → `dict://` 探端口 → gopher 发 HTTP → 抓包看 MySQL 握手 → UDF 提权 → Redis 写 shell → FastCGI RCE<br>SQL：`LIMIT 0,1` 的后果、Less-1 与 Less-2 注释差异、LIMIT 压掉时间盲注延迟（0.39s vs 12.37s） | `SSRF` `gopher` `Redis` `MySQL提权` `FastCGI` `SQL注入` |
 
 | [2026-11-11](./logs/2026-11-11.md) | 比赛工具化：总控台、签到题一键扫、离线 AI（先检索笔记再回答）<br>SSRF 可用性实验：wrapper 无 gopher/dict 而 libcurl 有、\max_execution_time\ 能兜住 curl 阻塞、worker 打满导致扫描静默丢端口 | `SSRF` `比赛准备` `协议差异` `离线AI` |
+| [2026-11-12](./logs/2026-11-12.md) | 院级 CTF 比赛日：上午把工具收敛成一键式（全检 / 端到端测试 / 12 模板验证 / 输出判读手册）<br>下午比赛（hex 签到、Base36/52、png、pcapng、docx、ELF）；晚上补建 StegoTool 隐写工具箱 | `院级CTF` `签到题` `隐像排查` `文档隐写` `工具化` |
 
 ## 总笔记（此前学习汇总）
 
