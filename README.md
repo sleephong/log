@@ -85,6 +85,7 @@ writeups/
 | [2026-11-11](./logs/2026-11-11.md) | 比赛工具化：总控台、签到题一键扫、离线 AI（先检索笔记再回答）<br>SSRF 可用性实验：wrapper 无 gopher/dict 而 libcurl 有、\max_execution_time\ 能兜住 curl 阻塞、worker 打满导致扫描静默丢端口 | `SSRF` `比赛准备` `协议差异` `离线AI` |
 | [2026-11-12](./logs/2026-11-12.md) | 院级 CTF 比赛日：上午把工具收敛成一键式（全检 / 端到端测试 / 12 模板验证 / 输出判读手册）<br>下午比赛（hex 签到、Base36/52、png、pcapng、docx、ELF）；晚上补建 StegoTool 隐写工具箱 | `院级CTF` `签到题` `隐像排查` `文档隐写` `工具化` |
 | [2026-11-13](./logs/2026-11-13.md) | 阶段二收尾：通关记录 + 补齐 L6/L7/L8/B1/B2 截图 + 知识点打包<br>三种 payload 字节骨架拆解（FastCGI 362B / Redis 174B / MySQL 193B）；四个可复刻验证实验<br>任务二开启：CVE-2025-68664 LangChain 序列化，自描述格式导致伪字典被实例化 | `SSRF` `协议骨架` `CVE` `LangChain` `序列化` |
+| [2026-11-14](./logs/2026-11-14.md) | 院级 CTF 的 \ccount-migration\：对象存储 + 提交审计 + 状态重放（键排序的确定性序列化、clock_correction_ms 时间陷阱）<br>CVE 复现工程化：双端口 5055 漏洞版 / 5056 修复版对比；靶场改造成可重启 | \数据审计\ \确定性序列化\ \CVE\ \LangGrinch\ \靶场可重启\ |
 
 ## 总笔记（此前学习汇总）
 
