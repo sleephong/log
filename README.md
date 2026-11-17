@@ -87,6 +87,7 @@ writeups/
 | [2026-11-13](./logs/2026-11-13.md) | 阶段二收尾：通关记录 + 补齐 L6/L7/L8/B1/B2 截图 + 知识点打包<br>三种 payload 字节骨架拆解（FastCGI 362B / Redis 174B / MySQL 193B）；四个可复刻验证实验<br>任务二开启：CVE-2025-68664 LangChain 序列化，自描述格式导致伪字典被实例化 | `SSRF` `协议骨架` `CVE` `LangChain` `序列化` |
 | [2026-11-14](./logs/2026-11-14.md) | 院级 CTF 的 \ccount-migration\：对象存储 + 提交审计 + 状态重放（键排序的确定性序列化、clock_correction_ms 时间陷阱）<br>CVE 复现工程化：双端口 5055 漏洞版 / 5056 修复版对比；靶场改造成可重启 | \数据审计\ \确定性序列化\ \CVE\ \LangGrinch\ \靶场可重启\ |
 | [2026-11-15](./logs/2026-11-15.md) | 二面报告定稿（45.4 KB，导出带姓名学号 PDF）<br>补写 Agent/MCP/Skills、Prompt Injection 与工具越权、注入实验三组对照；任务三四道 CTF 题<br>学到：间接注入与 SQL/命令注入同源、XXE 排查先抓包 | `Agent安全` `提示注入` `工具越权` `二面报告` `CTF` |
+| [2026-11-17](./logs/2026-11-17.md) | 第二个实验室 task1 知识点总结报告（单元 5–12，959 行，三段式：已有 / 缺口 / 怎么写）<br>AES-CTR nonce 复用题：实测 C1⊕C2=P1⊕P2，判出明文非纯 ASCII（前 24 字节相似、之后分叉） | `CTR复用` `many-time-pad` `task1` `知识点报告` |
 
 ## 总笔记（此前学习汇总）
 
