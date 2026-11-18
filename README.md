@@ -88,6 +88,7 @@ writeups/
 | [2026-11-14](./logs/2026-11-14.md) | 院级 CTF 的 \ccount-migration\：对象存储 + 提交审计 + 状态重放（键排序的确定性序列化、clock_correction_ms 时间陷阱）<br>CVE 复现工程化：双端口 5055 漏洞版 / 5056 修复版对比；靶场改造成可重启 | \数据审计\ \确定性序列化\ \CVE\ \LangGrinch\ \靶场可重启\ |
 | [2026-11-15](./logs/2026-11-15.md) | 二面报告定稿（45.4 KB，导出带姓名学号 PDF）<br>补写 Agent/MCP/Skills、Prompt Injection 与工具越权、注入实验三组对照；任务三四道 CTF 题<br>学到：间接注入与 SQL/命令注入同源、XXE 排查先抓包 | `Agent安全` `提示注入` `工具越权` `二面报告` `CTF` |
 | [2026-11-17](./logs/2026-11-17.md) | 第二个实验室 task1 知识点总结报告（单元 5–12，959 行，三段式：已有 / 缺口 / 怎么写）<br>AES-CTR nonce 复用题：实测 C1⊕C2=P1⊕P2，判出明文非纯 ASCII（前 24 字节相似、之后分叉） | `CTR复用` `many-time-pad` `task1` `知识点报告` |
+| [2026-11-18](./logs/2026-11-18.md) | AES-CTR 破题：中文明文让空格异或法失效，换已知明文攻击得 \SYC{black_dog_and_white_cat}\<br>Misc 综合（BMP 通道/LSB/FFT + 音频 STFT 频谱二维码网格重建）；写 bugscan 授权扫描工具（强制 scope + 主张/理由/限制） | \CTR已知明文\ \Misc\ \BMP隐写\ \音频频谱\ \工具开发\ |
 
 ## 总笔记（此前学习汇总）
 
