@@ -89,6 +89,7 @@ writeups/
 | [2026-11-15](./logs/2026-11-15.md) | 二面报告定稿（45.4 KB，导出带姓名学号 PDF）<br>补写 Agent/MCP/Skills、Prompt Injection 与工具越权、注入实验三组对照；任务三四道 CTF 题<br>学到：间接注入与 SQL/命令注入同源、XXE 排查先抓包 | `Agent安全` `提示注入` `工具越权` `二面报告` `CTF` |
 | [2026-11-17](./logs/2026-11-17.md) | 第二个实验室 task1 知识点总结报告（单元 5–12，959 行，三段式：已有 / 缺口 / 怎么写）<br>AES-CTR nonce 复用题：实测 C1⊕C2=P1⊕P2，判出明文非纯 ASCII（前 24 字节相似、之后分叉） | `CTR复用` `many-time-pad` `task1` `知识点报告` |
 | [2026-11-18](./logs/2026-11-18.md) | AES-CTR 破题：中文明文让空格异或法失效，换已知明文攻击得 \SYC{black_dog_and_white_cat}\<br>Misc 综合（BMP 通道/LSB/FFT + 音频 STFT 频谱二维码网格重建）；写 bugscan 授权扫描工具（强制 scope + 主张/理由/限制） | \CTR已知明文\ \Misc\ \BMP隐写\ \音频频谱\ \工具开发\ |
+| [2026-11-19](./logs/2026-11-19.md) | 极客大挑战 2026 第一周 Web 七题 writeup（保卫玉米 / ez_pop / 丹特丽安の書架 / ez_upload / ez_phar / 简历处理系统 / 过期文档）<br>图片隐写：位平面分离 + 文件尾 7z；二维码手工重建 29×29 矩阵 + 自制格子编辑器 | `极客大挑战` `SQL注入` `phar` `位平面` `二维码重建` `Git泄露` |
 
 ## 总笔记（此前学习汇总）
 
