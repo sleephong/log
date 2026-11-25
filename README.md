@@ -95,6 +95,7 @@ writeups/
 | [2026-11-22](./logs/2026-11-22.md) | 「罪恶王冠」从看图改成看结构：JPEG 段表 / DHT 符号表自洽性 / EOI 之后 0 字节，三条结构路全排除，转位平面 + 通道差 + 增强共 14 张图（未出 flag）<br>wp 横向过一遍：盲注 `0' OR (cond) OR '1'='2` 骨架、`/*!select*/` 版本注释、`cp -P *` 被 `-L` 文件顶掉、后缀绕过看内容/类型/长度 | \JPEG结构\ \Huffman表\ \位平面\ \参数注入\ \盲注\ |
 | [2026-11-23](./logs/2026-11-23.md) | `xuesheng.zip`（メシアたん）模型采样轨迹隐写：123 步 × 20 候选，`weight == 2^40` 标记被采样 token，解出 176 字改写文本<br>五项真实性校验全过（softmax≤1 / 四舍五入 0.5 / float32 / rank gap 平滑 / 唯一标记）→ trace 未篡改，payload 在「替换位置 + 候选 rank」；51 个探针脚本 + 9 条通道排除清单（未出 flag） | \AI隐写\ \采样轨迹\ \通道枚举\ \difflib\ \未被篡改\ |
 | [2026-11-24](./logs/2026-11-24.md) | wp 配图整合：10 题 24 张图收进 `极客26wp/`，合并成 453 行 wp，图片全改相对路径<br>本地手搓四个附件并从零造 XXE docx：docx 的 5 个 part、`standalone` 去掉、W3CDTF 时间格式一个空格之差；`.htaccess` 续行逐字节核对十六进制（`php_\` + CRLF）；phar 图片马靠 `getimagesize` 只读文件头 | \Office结构\ \XXE\ \htaccess续行\ \phar\ \相对路径\ |
+| [2026-11-25](./logs/2026-11-25.md) | 今日无 CTF，全天在目标来源链路：FOFA 的两套额度（web_query 300 / api_query 0，`-700` 是权限不是网络）、18 个猜的 API 路径全 404 → 改成钩 `fetch` 抓真实端点<br>合并查询 57 条压成 7 条省额度、无 key 替代源（urlscan 1729 条 / netlas 第 4 次 429）、指纹→CVE→nuclei 判定链、归属校验写成硬门槛、额度台账可审计 | \信息收集\ \FOFA\ \urlscan\ \nuclei\ \额度台账\ |
 
 ## 总笔记（此前学习汇总）
 
